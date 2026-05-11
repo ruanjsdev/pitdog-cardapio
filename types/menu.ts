@@ -1,0 +1,27 @@
+export type MenuCategoryId = string;
+
+export interface MenuCategory {
+  id: MenuCategoryId;
+  name: string;
+  description: string;
+  image: string;
+  headline: string;
+  highlight: string;
+  ordem?: number;
+  ativo?: boolean;
+}
+
+export interface MenuItem {
+  id: string;
+  categoryId: MenuCategoryId;
+  name: string;
+  description: string;
+  price: number;
+  promotionalPrice?: number | null;
+  tag?: string;
+  image: string;
+  active?: boolean;
+  featured?: boolean;
+  inStock?: boolean;
+  order?: number;
+}
