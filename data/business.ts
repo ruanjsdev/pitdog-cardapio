@@ -7,7 +7,7 @@ export const businessInfo = {
   },
   instagram: {
     handle: "@pits_dog_ulipa",
-    url: "https://www.instagram.com/pits_dog_ulipa?igsh=MThrY3djYzYzcnVrZA=="
+    url: "https://www.instagram.com/pits_dog_ulipa"
   },
   address: {
     display: "Av. Presidente Vargas - Pátio do Posto Goes",

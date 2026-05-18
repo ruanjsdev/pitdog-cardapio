@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/backend": {
-        target: "https://wipe-coming-reoccupy.ngrok-free.dev",
+        target: "https://pitsdog-api-production.up.railway.app",
         changeOrigin: true,
         secure: true,
         rewrite: (path) => path.replace(/^\/backend/, "")

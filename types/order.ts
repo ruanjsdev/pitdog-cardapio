@@ -1,13 +1,16 @@
 import { MenuItem } from "./menu";
 
+export interface CartAddon {
+  item: MenuItem;
+  quantity: number;
+}
+
 export interface CartItem {
   item: MenuItem;
   quantity: number;
   notes?: string;
-  addons?: {
-    adicionalId: string;
-    quantidade: number;
-  }[];
+  extras?: CartAddon[];
+  addons?: string[];
 }
 
 export interface DeliveryAddress {
@@ -35,6 +38,7 @@ export interface CheckoutForm {
   needsChange: boolean;
   changeFor: string;
 }
+
 export interface OrderDraft {
   items: CartItem[];
   subtotal: number;
@@ -46,7 +50,15 @@ export interface OrderDraft {
 export interface CreatedOrder {
   id: string;
   numeroPedido?: number;
-  status: "pendente" | "aceito" | "em_preparo" | "saiu_para_entrega" | "pronto_para_retirada" | "finalizado" | "cancelado" | string;
+  status:
+    | "pendente"
+    | "aceito"
+    | "em_preparo"
+    | "saiu_para_entrega"
+    | "pronto_para_retirada"
+    | "finalizado"
+    | "cancelado"
+    | string;
   total: number;
   criadoEm?: string;
 }

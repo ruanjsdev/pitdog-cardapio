@@ -1,6 +1,5 @@
 import { businessInfo } from "../data/business";
 import { StoreConfig } from "../types/store";
-import { apiRequest, hasApiUrl } from "./apiClient";
 
 export const fallbackStoreConfig: StoreConfig = {
   id: "local",
@@ -21,12 +20,5 @@ export const fallbackStoreConfig: StoreConfig = {
 };
 
 export const getStoreConfig = async (): Promise<StoreConfig> => {
-  if (!hasApiUrl) return fallbackStoreConfig;
-
-  try {
-    return await apiRequest<StoreConfig>("/loja/config");
-  } catch (error) {
-    console.warn("Usando configuracao local da loja.", error);
-    return fallbackStoreConfig;
-  }
+  return fallbackStoreConfig;
 };

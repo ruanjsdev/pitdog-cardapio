@@ -19,7 +19,6 @@ import { CheckoutForm } from "../types/order";
 const STORAGE_CHECKOUT_KEY = "pits-dog-checkout";
 const MIN_LOADING_TIME = 2200;
 
-/* fallback padrão */
 const initialCheckout: CheckoutForm = {
   customerName: "",
   phone: "",
@@ -40,7 +39,6 @@ const initialCheckout: CheckoutForm = {
   notes: "",
 };
 
-/* 🔥 CARREGA DO LOCALSTORAGE */
 const loadCheckout = (): CheckoutForm => {
   try {
     const saved = localStorage.getItem(STORAGE_CHECKOUT_KEY);
@@ -53,18 +51,24 @@ const loadCheckout = (): CheckoutForm => {
       ...parsed,
       deliveryAddress: {
         ...initialCheckout.deliveryAddress,
-        ...(parsed.deliveryAddress ?? {})
-      }
+        ...(parsed.deliveryAddress ?? {}),
+      },
     };
   } catch {
     return initialCheckout;
   }
 };
 
+type AddedPopup = {
+  title: string;
+  message: string;
+};
+
 export const App = () => {
   const cart = useCart();
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [addedPopup, setAddedPopup] = useState<AddedPopup | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuLoading, setIsMenuLoading] = useState(true);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -74,17 +78,10 @@ export const App = () => {
   const [products, setProducts] = useState<MenuItem[]>([]);
   const [lastOrderNumber, setLastOrderNumber] = useState<number | undefined>();
 
-  /* 🔥 AGORA COMEÇA COM DADOS SALVOS */
-  const [checkout, setCheckout] = useState<CheckoutForm>(() =>
-    loadCheckout()
-  );
+  const [checkout, setCheckout] = useState<CheckoutForm>(() => loadCheckout());
 
-  /* SALVA SEMPRE QUE MUDAR */
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_CHECKOUT_KEY,
-      JSON.stringify(checkout)
-    );
+    localStorage.setItem(STORAGE_CHECKOUT_KEY, JSON.stringify(checkout));
   }, [checkout]);
 
   useEffect(() => {
@@ -95,7 +92,7 @@ export const App = () => {
 
       const [nextStoreConfig, nextMenu] = await Promise.all([
         getStoreConfig(),
-        getPublicMenu()
+        getPublicMenu(),
       ]);
 
       if (!isMounted) return;
@@ -122,10 +119,24 @@ export const App = () => {
   }, [isCartOpen, showCheckout]);
 
   useEffect(() => {
+    if (isMenuLoading || cart.items.length === 0) return;
+
+    const availableProductIds = new Set(products.map((item) => item.id));
+    const hasUnavailableItem =
+      products.length === 0 ||
+      cart.items.some((cartItem) => !availableProductIds.has(cartItem.item.id));
+
+    if (hasUnavailableItem) {
+      cart.clearCart();
+    }
+  }, [cart, isMenuLoading, products]);
+
+  useEffect(() => {
     let didCancel = false;
     let pageLoaded = document.readyState === "complete";
 
     const startedAt = performance.now();
+
     const finishLoading = () => {
       if (!pageLoaded || didCancel) return;
 
@@ -171,7 +182,13 @@ export const App = () => {
       total: cart.summary.subtotal + deliveryFee,
       checkout,
     };
-  }, [cart.items, cart.summary.subtotal, checkout, showCheckout, storeConfig.taxaEntrega]);
+  }, [
+    cart.items,
+    cart.summary.subtotal,
+    checkout,
+    showCheckout,
+    storeConfig.taxaEntrega,
+  ]);
 
   const cartSummary = useMemo(
     () => ({
@@ -182,9 +199,38 @@ export const App = () => {
     [cart.summary, orderDraft]
   );
 
+  const extraItems = useMemo(
+    () => products.filter((item) => item.categoryId === "extras"),
+    [products]
+  );
+
+  const visibleCategories = useMemo(
+    () => categories.filter((category) => category.id !== "extras"),
+    [categories]
+  );
+
+  const visibleProducts = useMemo(
+    () => products.filter((item) => item.categoryId !== "extras"),
+    [products]
+  );
+
+  const showPopup = (title: string, message: string) => {
+    setAddedPopup({
+      title,
+      message,
+    });
+
+    setTimeout(() => {
+      setAddedPopup(null);
+    }, 2200);
+  };
+
+  const showAddedItemPopup = (item: MenuItem) => {
+    showPopup("Adicionado ao pedido", item.name);
+  };
+
   return (
     <>
-      {/* fundo */}
       <div className="bg-rain" aria-hidden="true" />
 
       {isLoading && <LoadingScreen />}
@@ -204,16 +250,38 @@ export const App = () => {
         />
 
         <MenuSection
-          categories={categories}
-          products={products}
+          categories={visibleCategories}
+          products={visibleProducts}
           isLoading={isMenuLoading}
           storeConfig={storeConfig}
+          getItemQuantity={(itemId) => {
+            const itemInCart = cart.items.find((cartItem: any) => {
+              const cartItemId =
+                cartItem.id ??
+                cartItem.item?.id ??
+                cartItem.product?.id ??
+                cartItem.menuItem?.id ??
+                cartItem.productId;
+
+              return String(cartItemId) === String(itemId);
+            });
+
+            return itemInCart?.quantity ?? 0;
+          }}
           onAddItem={(item) => {
             if (!storeConfig.lojaAberta) return;
+
             cart.addItem(item);
-            setIsCartOpen(true);
+            showAddedItemPopup(item);
           }}
         />
+
+        {addedPopup && (
+          <div className="added-item-popup">
+            <strong>{addedPopup.title}</strong>
+            <span>{addedPopup.message}</span>
+          </div>
+        )}
 
         <AboutSection />
         <ContactSection />
@@ -221,30 +289,50 @@ export const App = () => {
 
       <Footer />
 
-      {/* CART */}
       {isCartOpen && (
         <CartDrawer
           isOpen={isCartOpen}
           items={cart.items}
           summary={cartSummary}
+          extraItems={extraItems}
           onClose={() => setIsCartOpen(false)}
-          onAddItem={cart.addItem}
+          onAddItem={(item) => {
+            if (!storeConfig.lojaAberta) return;
+
+            cart.addItem(item);
+            showAddedItemPopup(item);
+          }}
           onDecreaseItem={cart.decreaseItem}
           onRemoveItem={cart.removeItem}
+          onAddExtraToItem={(parentItemId: string, extraItem: MenuItem) => {
+            if (!storeConfig.lojaAberta) return;
+
+            cart.addExtraToItem(parentItemId, extraItem);
+          }}
+          onDecreaseExtraFromItem={cart.decreaseExtraFromItem}
+          onRemoveExtraFromItem={cart.removeExtraFromItem}
+          onConfirmExtras={(itemName: string) => {
+            showPopup(
+              "Adicionais confirmados",
+              `Adicionais adicionados em ${itemName}`
+            );
+          }}
           onCheckout={() => {
             if (!storeConfig.lojaAberta) return;
+
             setIsCartOpen(false);
             setShowCheckout(true);
           }}
           checkoutDisabled={!storeConfig.lojaAberta || cart.items.length === 0}
-          checkoutDisabledMessage={!storeConfig.lojaAberta ? "Loja fechada" : "Carrinho vazio"}
+          checkoutDisabledMessage={
+            !storeConfig.lojaAberta ? "Loja fechada" : "Carrinho vazio"
+          }
           onAddMore={() => {
             setIsCartOpen(false);
           }}
         />
       )}
 
-      {/* CHECKOUT */}
       {showCheckout && (
         <div className="cart-overlay is-open">
           <button
@@ -266,20 +354,19 @@ export const App = () => {
                 setShowSuccess(true);
 
                 cart.clearCart();
-
-                /* 🔥 NÃO LIMPA CHECKOUT MAIS (isso resolve seu problema) */
               }}
             />
           </div>
         </div>
       )}
 
-      {/* SUCCESS */}
       {showSuccess && (
         <div className="success-overlay">
           <div className="success-box">
             <div className="success-icon">🎉</div>
+
             <h1>Pedido realizado!</h1>
+
             <p>
               {lastOrderNumber
                 ? `Pedido #${lastOrderNumber} enviado para o painel admin.`

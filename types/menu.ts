@@ -24,4 +24,11 @@ export interface MenuItem {
   featured?: boolean;
   inStock?: boolean;
   order?: number;
+  additionals?: MenuAdditional[];
+}
+
+export interface MenuAdditional {
+  id: string;
+  name: string;
+  price: number;
 }

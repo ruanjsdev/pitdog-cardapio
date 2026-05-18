@@ -2,49 +2,78 @@ import { CreatedOrder, OrderDraft } from "../types/order";
 import { apiRequest, hasApiUrl } from "./apiClient";
 
 const mapFulfillment = (fulfillment: OrderDraft["checkout"]["fulfillment"]) => {
-  if (fulfillment === "pickup") return "retirada";
-  if (fulfillment === "table") return "mesa";
-  return "entrega";
+  if (fulfillment === "pickup") return "RETIRADA";
+  if (fulfillment === "table") return "MESA";
+  return "ENTREGA";
 };
 
 const mapPaymentMethod = (paymentMethod: OrderDraft["checkout"]["paymentMethod"]) => {
-  if (paymentMethod === "cash") return "dinheiro";
-  if (paymentMethod === "card") return "cartao";
-  return "pix";
+  if (paymentMethod === "cash") return "DINHEIRO";
+  return "PIX";
+};
+
+const mapCardPaymentMethod = (cardType: OrderDraft["checkout"]["cardType"]) => {
+  if (cardType === "debit") return "CARTAO_DEBITO";
+  return "CARTAO_CREDITO";
+};
+
+const toApiId = (id: string) => {
+  const numericId = Number(id);
+  return Number.isFinite(numericId) ? numericId : id;
+};
+
+const toOptionalInteger = (value: string) => {
+  const numericValue = Number.parseInt(value.replace(/\D/g, ""), 10);
+  return Number.isFinite(numericValue) ? numericValue : undefined;
 };
 
 const buildCreateOrderPayload = (order: OrderDraft) => ({
-  cliente: {
-    nome: order.checkout.customerName,
-    telefone: order.checkout.phone
-  },
-  tipoEntrega: mapFulfillment(order.checkout.fulfillment),
-  endereco:
+  tipoPedido: mapFulfillment(order.checkout.fulfillment),
+  numeroMesa:
+    order.checkout.fulfillment === "table"
+      ? toOptionalInteger(order.checkout.tableNumber)
+      : undefined,
+  nomeCliente: order.checkout.customerName,
+  telefoneCliente: order.checkout.phone,
+  bairroEntrega:
     order.checkout.fulfillment === "delivery"
-      ? {
-          rua: order.checkout.deliveryAddress.street,
-          numero: order.checkout.deliveryAddress.number,
-          bairro: order.checkout.deliveryAddress.neighborhood,
-          complemento: order.checkout.deliveryAddress.complement,
-          referencia: order.checkout.deliveryAddress.reference
-        }
-      : null,
-  mesa: order.checkout.fulfillment === "table" ? order.checkout.tableNumber : null,
-  pagamento: {
-    forma: mapPaymentMethod(order.checkout.paymentMethod),
-    tipoCartao: order.checkout.paymentMethod === "card" ? order.checkout.cardType : null,
-    trocoPara:
-      order.checkout.paymentMethod === "cash" && order.checkout.needsChange
-        ? order.checkout.changeFor
-        : null
-  },
+      ? order.checkout.deliveryAddress.neighborhood
+      : undefined,
+  ruaEntrega:
+    order.checkout.fulfillment === "delivery"
+      ? order.checkout.deliveryAddress.street
+      : undefined,
+  numeroCasa:
+    order.checkout.fulfillment === "delivery"
+      ? toOptionalInteger(order.checkout.deliveryAddress.number)
+      : undefined,
+  complemento:
+    order.checkout.fulfillment === "delivery"
+      ? order.checkout.deliveryAddress.complement
+      : undefined,
+  formaPagamento:
+    order.checkout.paymentMethod === "card"
+      ? mapCardPaymentMethod(order.checkout.cardType)
+      : mapPaymentMethod(order.checkout.paymentMethod),
+  taxaEntrega: order.deliveryFee,
+  descontoManualPercentual: 0,
+  descontoManualValor: 0,
   itens: order.items.map((cartItem) => ({
-    produtoId: cartItem.item.id,
+    produtoId: toApiId(cartItem.item.id),
+    tipoItem: "PRODUTO",
     quantidade: cartItem.quantity,
-    observacao: cartItem.notes ?? "",
-    adicionais: cartItem.addons ?? []
-  })),
-  observacaoGeral: order.checkout.notes
+    observacao: cartItem.notes ?? order.checkout.notes,
+    adicionais:
+      cartItem.extras && cartItem.extras.length > 0
+        ? cartItem.extras.map((extra) => ({
+            adicionalId: toApiId(extra.item.id),
+            quantidade: extra.quantity
+          }))
+        : (cartItem.addons ?? []).map((adicionalId) => ({
+            adicionalId: toApiId(adicionalId),
+            quantidade: 1
+          }))
+  }))
 });
 
 export const createOrderDraft = async (order: OrderDraft): Promise<CreatedOrder> => {

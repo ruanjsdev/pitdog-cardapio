@@ -25,7 +25,10 @@ const unwrapResponse = async <T>(response: Response, url: string): Promise<T> =>
 
   if (!response.ok) {
     throw new ApiRequestError(response.status, {
-      message: payload?.message ?? "Nao foi possivel concluir a solicitacao.",
+      message:
+        payload?.message ??
+        payload?.error ??
+        `Nao foi possivel concluir a solicitacao. Erro ${response.status}.`,
       code: payload?.code,
       errors: payload?.errors
     });
