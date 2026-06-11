@@ -9,6 +9,13 @@ const backendUrl = (process.env.BACKEND_API_URL ?? "https://pitsdog-api-producti
 const whatsappBotUrl = (process.env.WHATSAPP_BOT_URL ?? process.env.VITE_WHATSAPP_BOT_URL ?? "https://pits-dog-bot.onrender.com").replace(/\/$/, "");
 const whatsappBotPin = process.env.WHATSAPP_ADMIN_PIN ?? process.env.VITE_WHATSAPP_ADMIN_PIN ?? "";
 const port = Number(process.env.PORT ?? 3000);
+const menuCacheTtlMs = 60 * 1000;
+let menuCache = {
+  expiresAt: 0,
+  productsById: new Map(),
+  combosById: new Map(),
+  additionalsById: new Map(),
+};
 
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
@@ -51,6 +58,92 @@ async function readRequestBody(request) {
   return Buffer.concat(chunks);
 }
 
+function asArray(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.content)) return payload.content;
+
+  return [];
+}
+
+function getAdditionalName(additional) {
+  return additional?.nomeAdicional ?? additional?.nomedAicional ?? additional?.nome ?? "Adicional";
+}
+
+async function fetchBackendJson(path) {
+  const response = await fetch(`${backendUrl}${path}`, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falha ao carregar ${path}: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function getMenuMaps() {
+  if (Date.now() < menuCache.expiresAt) return menuCache;
+
+  const [productsResult, combosResult, additionalsResult] = await Promise.allSettled([
+    fetchBackendJson("/produtos"),
+    fetchBackendJson("/combos"),
+    fetchBackendJson("/adicionais"),
+  ]);
+  const products = productsResult.status === "fulfilled" ? asArray(productsResult.value) : [];
+  const combos = combosResult.status === "fulfilled" ? asArray(combosResult.value) : [];
+  const additionals = additionalsResult.status === "fulfilled" ? asArray(additionalsResult.value) : [];
+
+  menuCache = {
+    expiresAt: Date.now() + menuCacheTtlMs,
+    productsById: new Map(products.map((product) => [String(product.id), product])),
+    combosById: new Map(combos.map((combo) => [String(combo.id), combo])),
+    additionalsById: new Map(additionals.map((additional) => [String(additional.id), additional])),
+  };
+
+  return menuCache;
+}
+
+async function buildNotificationItems(orderPayload) {
+  const items = Array.isArray(orderPayload.itens) ? orderPayload.itens : [];
+
+  if (items.length === 0) return [];
+
+  try {
+    const { additionalsById, combosById, productsById } = await getMenuMaps();
+
+    return items.map((item) => {
+      const product = item.produtoId ? productsById.get(String(item.produtoId)) : null;
+      const combo = item.comboId ? combosById.get(String(item.comboId)) : null;
+      const source = product ?? combo;
+      const additions = Array.isArray(item.adicionais)
+        ? item.adicionais.map((addition) => {
+            const additional = additionalsById.get(String(addition.adicionalId));
+
+            return {
+              name: getAdditionalName(additional),
+              price: additional?.preco,
+              quantity: Math.max(1, Number(addition.quantidade ?? 1)),
+            };
+          })
+        : [];
+
+      return {
+        additions,
+        name: source?.nome ?? item.nome ?? item.name ?? "Item",
+        observation: item.observacao ?? item.observation ?? "",
+        price: source?.preco ?? item.preco ?? item.price,
+        quantity: Math.max(1, Number(item.quantidade ?? item.quantity ?? 1)),
+      };
+    });
+  } catch (error) {
+    console.warn("[bot] Nao foi possivel enriquecer itens da notificacao.", error);
+    return items;
+  }
+}
+
 async function notifyWhatsappBot(orderPayload, createdOrder) {
   if (!whatsappBotUrl) return;
 
@@ -59,6 +152,7 @@ async function notifyWhatsappBot(orderPayload, createdOrder) {
   if (!customerPhone || orderPayload.tipoPedido === "MESA") return;
 
   const total = createdOrder?.total ?? orderPayload.total;
+  const items = await buildNotificationItems(orderPayload);
 
   try {
     const response = await fetch(`${whatsappBotUrl}/api/notify-order`, {
@@ -69,7 +163,7 @@ async function notifyWhatsappBot(orderPayload, createdOrder) {
           customerName: orderPayload.nomeCliente,
           customerPhone,
           delivery: orderPayload.tipoPedido,
-          items: Array.isArray(orderPayload.itens) ? orderPayload.itens : [],
+          items,
           payment: orderPayload.formaPagamento,
           paymentMethod: orderPayload.formaPagamento,
           total,
