@@ -4,8 +4,6 @@ const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
 export const hasApiUrl = Boolean(API_URL);
 
-// Controle de fila para evitar erro 429 (Too Many Requests)
-let requestQueue: Promise<any> = Promise.resolve();
 // Cache temporário para evitar pedidos idênticos no mesmo segundo
 const inFlightRequests = new Map<string, Promise<any>>();
 
@@ -86,12 +84,6 @@ export const apiRequest = async <T>(
   }
 
   const executeRequest = async (retries = 2): Promise<T> => {
-    // Aguarda a requisição anterior terminar + um pequeno temporizador
-    await requestQueue;
-    if (options.method && options.method !== 'GET') {
-      await new Promise(resolve => setTimeout(resolve, 500)); 
-    }
-
     try {
       const response = await fetch(url, {
         ...options,
@@ -114,9 +106,6 @@ export const apiRequest = async <T>(
 
   // Enfileira a nova requisição
   const currentRequest = executeRequest();
-  
-  // Atualiza a fila global para que a próxima requisição espere por esta
-  requestQueue = currentRequest.then(() => {}).catch(() => {});
   inFlightRequests.set(url, currentRequest);
 
   return currentRequest;
