@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { FormEvent, useEffect, useState } from "react";
+import { hasApiUrl } from "../services/apiClient";
 import { createOrderDraft } from "../services/orderService";
 import { createPixPaymentIntent } from "../services/paymentService";
 import { CheckoutForm, CreatedOrder, OrderDraft } from "../types/order";
@@ -133,7 +134,7 @@ export const CheckoutSection = ({
     try {
       const createdOrder = await createOrderDraft(orderDraft);
 
-      if (!isTableOrder && checkout.paymentMethod === "pix" && !import.meta.env.VITE_API_URL) {
+      if (!isTableOrder && checkout.paymentMethod === "pix" && !hasApiUrl) {
         await createPixPaymentIntent(orderDraft);
       }
 
