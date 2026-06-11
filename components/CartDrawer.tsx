@@ -69,6 +69,39 @@ export const CartDrawer = ({
   };
 
   const quickNotes = ["sem cebola", "sem milho", "molho separado", "bem passado"];
+  const normalizeText = (value = "") =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+  const isBeverageItem = (item: MenuItem) => {
+    const searchable = normalizeText(`${item.name} ${item.description}`);
+
+    return [
+      "agua",
+      "bebida",
+      "cerveja",
+      "corona",
+      "energetico",
+      "h2o",
+      "refrigerante",
+      "redbull",
+      "refri",
+      "skol",
+      "suco",
+    ].some((term) => searchable.includes(term));
+  };
+
+  const getSelectedFlavor = (notes = "", flavorOptions: string[]) => {
+    const normalizedNotes = normalizeText(notes);
+
+    return flavorOptions.find((flavor) => normalizedNotes === normalizeText(flavor)) ?? "";
+  };
+
+  const selectFlavor = (itemId: string, flavor: string) => {
+    onUpdateItemNotes(itemId, flavor);
+  };
 
   const toggleQuickNote = (itemId: string, note: string, currentNotes = "") => {
     const parts = currentNotes
@@ -125,6 +158,9 @@ export const CartDrawer = ({
               const isExtraItem = cartItem.item.type === "ADDITIONAL" || cartItem.item.categoryId === "extras";
               const canUseExtras = cartItem.item.allowsAdditionals === true;
               const extras = cartItem.extras ?? [];
+              const flavorOptions = cartItem.item.options ?? [];
+              const selectedFlavor = getSelectedFlavor(cartItem.notes, flavorOptions);
+              const isBeverage = isBeverageItem(cartItem.item);
 
               return (
                 <div className="cart-item" key={itemId}>
@@ -238,7 +274,25 @@ export const CartDrawer = ({
                       </div>
                     )}
 
-                    {!isExtraItem && (
+                    {!isExtraItem && isBeverage && flavorOptions.length > 0 && (
+                      <div className="cart-item-notes">
+                        <span>Sabor do suco</span>
+                        <div className="quick-note-chips" aria-label="Sabores disponíveis">
+                          {flavorOptions.map((flavor) => (
+                            <button
+                              key={flavor}
+                              type="button"
+                              className={selectedFlavor === flavor ? "is-selected" : ""}
+                              onClick={() => selectFlavor(itemId, flavor)}
+                            >
+                              {flavor}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!isExtraItem && !isBeverage && (
                       <label className="cart-item-notes">
                         <span>Observação do item</span>
                         <div className="quick-note-chips">

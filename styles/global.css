@@ -550,6 +550,20 @@ img {
   line-height: 1.45;
 }
 
+.product-card__tag-line {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.65rem;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid rgba(255, 163, 26, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 106, 0, 0.14);
+  color: var(--orange-soft);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .product-footer {
   display: flex;
   align-items: center;

@@ -75,6 +75,10 @@ export const CheckoutSection = ({
       updateField("fulfillment", storeConfig.aceitaEntrega ? "delivery" : "pickup");
     }
 
+    if (checkout.fulfillment === "table") {
+      return;
+    }
+
     if (checkout.paymentMethod === "pix" && !storeConfig.aceitaPix) {
       updateField("paymentMethod", storeConfig.aceitaCartao ? "card" : "cash");
     }
@@ -129,7 +133,7 @@ export const CheckoutSection = ({
     try {
       const createdOrder = await createOrderDraft(orderDraft);
 
-      if (checkout.paymentMethod === "pix" && !import.meta.env.VITE_API_URL) {
+      if (!isTableOrder && checkout.paymentMethod === "pix" && !import.meta.env.VITE_API_URL) {
         await createPixPaymentIntent(orderDraft);
       }
 
@@ -379,6 +383,7 @@ export const CheckoutSection = ({
         )}
 
         {/* PAGAMENTO */}
+        {!isTableOrder && (
         <div className="payment-section">
 
           <span className="payment-title">Forma de pagamento</span>
@@ -457,6 +462,7 @@ export const CheckoutSection = ({
           )}
 
         </div>
+        )}
 
         {errorMessage && <div className="form-error">{errorMessage}</div>}
 

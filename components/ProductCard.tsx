@@ -50,6 +50,9 @@ export const ProductCard = ({
       <div>
         <h3>{item.name}</h3>
         <p>{item.description}</p>
+        {displayTag && item.inStock !== false && (
+          <span className="product-card__tag-line">{displayTag}</span>
+        )}
       </div>
 
       <div className="product-footer">

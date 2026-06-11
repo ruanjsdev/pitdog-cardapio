@@ -27,6 +27,7 @@ export interface MenuItem {
   order?: number;
   allowsAdditionals?: boolean;
   additionals?: MenuAdditional[];
+  options?: string[];
 }
 
 export interface MenuAdditional {

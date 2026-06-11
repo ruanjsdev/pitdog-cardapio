@@ -29,6 +29,8 @@ type ApiProduct = {
   categoriaNome?: string;
   ativo?: boolean;
   destaque?: boolean;
+  highlight?: string;
+  subtitulo?: string;
   ordem?: number;
   estoqueDisponivel?: boolean;
   permiteAdicionais?: boolean;
@@ -198,6 +200,15 @@ const pickLocalFoodPhoto = (seed: string, categoryName?: string) => {
   return photos[lock % photos.length];
 };
 
+export const clearPublicMenuCache = () => {
+  try {
+    window.sessionStorage.removeItem(publicMenuCacheKey);
+    console.log("Public menu cache cleared.");
+  } catch (error) {
+    console.error("Failed to clear public menu cache:", error);
+  }
+};
+
 const resolveProductImage = (product: ApiProduct) => {
   if (isUsableImageUrl(product.imagem ?? product.imagemUrl)) {
     return (product.imagem ?? product.imagemUrl) as string;
@@ -216,22 +227,54 @@ const resolveComboImage = (combo: ApiCombo) => {
     pickLocalFoodPhoto(`combo-${combo.id}-${combo.nome}`, "combo");
 };
 
-const mapProduct = (product: ApiProduct): MenuItem => ({
-  id: String(product.id),
-  categoryId: String(product.categoriaId ?? product.categoria?.id ?? "sem-categoria"),
-  type: "PRODUCT",
-  name: product.nome,
-  description: product.descricao ?? "",
-  price: product.precoPromocional ?? product.preco,
-  promotionalPrice: product.precoPromocional,
-  image: resolveProductImage(product),
-  active: product.ativo,
-  featured: product.destaque,
-  inStock: product.estoqueDisponivel,
-  order: product.ordem,
-  allowsAdditionals: product.permiteAdicionais ?? product.allowsAdditionals ?? true,
-  tag: product.destaque ? "Destaque" : undefined
-});
+function normalizeText(value = "") {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+const isBeverage = (product: ApiProduct) => {
+  const categoryName = normalizeText(product.categoriaNome ?? product.categoria?.nome ?? "");
+  const productName = normalizeText(product.nome);
+
+  return categoryName.includes("bebida") || productName.includes("refri") || productName.includes("suco");
+};
+
+const getJuiceOptions = (name: string, description: string) => {
+  const searchable = normalizeText(`${name} ${description}`);
+
+  if (!searchable.includes("suco")) return undefined;
+
+  const knownFlavors = ["Maracujá", "Acerola", "Abacaxi"];
+  const flavors = knownFlavors.filter((flavor) => searchable.includes(normalizeText(flavor)));
+
+  return flavors.length > 0 ? flavors : undefined;
+};
+
+const mapProduct = (product: ApiProduct): MenuItem => {
+  const name = product.nome;
+  const description = product.descricao ?? "";
+  const tagText = product.highlight || product.subtitulo || (product.destaque ? "Destaque" : undefined);
+
+  return {
+    id: String(product.id),
+    categoryId: String(product.categoriaId ?? product.categoria?.id ?? "sem-categoria"),
+    type: "PRODUCT",
+    name: name,
+    description: description,
+    price: product.precoPromocional ?? product.preco,
+    promotionalPrice: product.precoPromocional,
+    image: resolveProductImage(product),
+    active: product.ativo,
+    featured: product.destaque || !!(product.highlight || product.subtitulo),
+    inStock: product.estoqueDisponivel,
+    order: product.ordem,
+    allowsAdditionals: isBeverage(product) ? false : product.permiteAdicionais ?? product.allowsAdditionals ?? true,
+    tag: tagText,
+    options: getJuiceOptions(name, description)
+  };
+};
 
 const mapAdditional = (additional: ApiAdditional): MenuItem => ({
   id: String(additional.id),
@@ -260,12 +303,6 @@ const mapCombo = (combo: ApiCombo, categoryId = "combos"): MenuItem => ({
   allowsAdditionals: false,
   tag: "Combo"
 });
-
-const normalizeText = (value = "") =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
 
 const isComboProduct = (product: ApiProduct) =>
   normalizeText(product.categoriaNome ?? product.categoria?.nome ?? "").includes("combo");
@@ -304,113 +341,95 @@ const loadPublicMenuFromApi = async (): Promise<PublicMenu> => {
     publicApiRequest<ApiCombo[]>("/combos")
   ]);
 
-  const apiCategories =
-    apiCategoriesResult.status === "fulfilled" ? apiCategoriesResult.value : null;
-  const apiProducts =
-    apiProductsResult.status === "fulfilled" ? apiProductsResult.value : null;
-  const hasApiCategories = apiCategories !== null;
-  const hasApiProducts = apiProducts !== null;
+  let anyApiCallFulfilled = false;
   const cachedMenu = readPublicMenuCache();
 
-  const categories = hasApiCategories
-    ? apiCategories
+  // Processamento de Categorias
+  let categories: MenuCategory[] = [];
+  if (apiCategoriesResult.status === "fulfilled") {
+    anyApiCallFulfilled = true;
+    categories = apiCategoriesResult.value
         .map(mapCategory)
         .filter((category) => category.ativo !== false)
-        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
-    : cachedMenu?.categories ?? [];
-
-  if (hasApiCategories) {
+        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
     console.info("Categorias carregadas da API:", categories.map((category) => category.name));
-  }
-
-  if (apiCategoriesResult.status === "fulfilled" && !hasApiCategories) {
-    console.info("A API de categorias respondeu, mas nao retornou categorias ativas.");
-  }
-
-  if (apiCategoriesResult.status === "rejected") {
+  } else {
     console.warn("Nao foi possivel carregar /categorias da API.", apiCategoriesResult.reason);
+    categories = cachedMenu?.categories ?? [];
   }
 
-  const additionalProductsFromApi =
-    apiAdditionalsResult.status === "fulfilled"
-      ? apiAdditionalsResult.value
-          .map(mapAdditional)
-          .filter((item) => item.active !== false && item.inStock !== false)
-      : null;
-  const additionalProducts =
-    additionalProductsFromApi ??
-    (cachedMenu?.products.filter((item) => item.type === "ADDITIONAL") ?? []);
-
-  if (apiAdditionalsResult.status === "rejected") {
+  // Processamento de Adicionais
+  let additionalProducts: MenuItem[] = [];
+  if (apiAdditionalsResult.status === "fulfilled") {
+    anyApiCallFulfilled = true;
+    additionalProducts = apiAdditionalsResult.value
+        .map(mapAdditional)
+        .filter((item) => item.active !== false && item.inStock !== false);
+  } else {
     console.warn("Nao foi possivel carregar /adicionais da API.", apiAdditionalsResult.reason);
+    additionalProducts = cachedMenu?.products.filter((item) => item.type === "ADDITIONAL") ?? [];
   }
+
+  // Processamento de Produtos e Combos
+  let products: MenuItem[] = [];
+  let combos: MenuItem[] = [];
 
   const combosCategory = categories.find((category) =>
     normalizeText(category.name).includes("combo")
   );
   const combosCategoryId = combosCategory?.id;
-  const productsFromApi = hasApiProducts
-    ? apiProducts
-        .filter((product) => !isComboProduct(product))
-        .map(mapProduct)
-        .filter((item) => item.active !== false && item.inStock !== false)
-        .filter((item) => categories.some((category) => category.id === item.categoryId))
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    : null;
-  const comboProductsFromApi = hasApiProducts
-    ? combosCategoryId
-      ? apiProducts
-        .filter(isComboProduct)
-        .map((product) => ({
-          ...mapProduct(product),
-          categoryId: combosCategoryId,
-          tag: "Combo"
-        }))
-        .filter((item) => item.active !== false && item.inStock !== false)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      : []
-    : [];
-  const combosFromApi =
-    combosCategoryId && apiCombosResult.status === "fulfilled" && apiCombosResult.value.length > 0
-      ? apiCombosResult.value
-          .map((combo) => mapCombo(combo, combosCategoryId))
+
+  if (apiProductsResult.status === "fulfilled") {
+    anyApiCallFulfilled = true;
+    products = apiProductsResult.value
+      .filter((product) => !isComboProduct(product))
+      .map(mapProduct)
+      .filter((item) => item.active !== false && item.inStock !== false)
+      .filter((item) => categories.some((category) => category.id === item.categoryId))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    const comboProductsFromApi = combosCategoryId
+      ? apiProductsResult.value
+          .filter(isComboProduct)
+          .map((product) => ({
+            ...mapProduct(product),
+            categoryId: combosCategoryId,
+            tag: "Combo"
+          }))
           .filter((item) => item.active !== false && item.inStock !== false)
-      : null;
-  const combos =
-    combosFromApi ??
-    (comboProductsFromApi.length > 0
-      ? comboProductsFromApi
-      : combosCategoryId
-        ? cachedMenu?.products.filter((item) => item.type === "COMBO" && item.categoryId === combosCategoryId) ?? []
-        : []);
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      : [];
 
-  const products =
-    productsFromApi ??
-    (cachedMenu && categories.length > 0
-      ? filterMenuByCategories(cachedMenu, categories).products.filter((item) => item.type !== "COMBO" && item.type !== "ADDITIONAL")
-      : []);
-
-  if (apiProductsResult.status === "rejected") {
+    if (apiCombosResult.status === "fulfilled") {
+      anyApiCallFulfilled = true;
+      if (combosCategoryId && apiCombosResult.value.length > 0) {
+        combos = apiCombosResult.value
+            .map((combo) => mapCombo(combo, combosCategoryId))
+            .filter((item) => item.active !== false && item.inStock !== false);
+      } else {
+        combos = comboProductsFromApi;
+      }
+    } else {
+      console.warn("Nao foi possivel carregar /combos da API.", apiCombosResult.reason);
+      combos = comboProductsFromApi;
+    }
+  } else {
     console.warn("Nao foi possivel carregar /produtos da API.", apiProductsResult.reason);
+    products = cachedMenu?.products.filter((item) => item.type !== "COMBO" && item.type !== "ADDITIONAL") ?? [];
+    combos = cachedMenu?.products.filter((item) => item.type === "COMBO") ?? [];
   }
 
-  if (apiProductsResult.status === "fulfilled" && apiProductsResult.value.length === 0) {
-    console.info("A API de produtos respondeu, mas nao retornou produtos ativos.");
-  }
-
-  if (apiCombosResult.status === "rejected") {
-    console.warn("Nao foi possivel carregar /combos da API.", apiCombosResult.reason);
+  if (!anyApiCallFulfilled || (categories.length === 0 && products.length === 0 && additionalProducts.length === 0 && combos.length === 0)) {
+    clearPublicMenuCache();
+    return { categories: [], products: [] };
   }
 
   const menu = {
-    categories,
+    categories: categories,
     products: filterItemsByActiveCategories([...products, ...combos, ...additionalProducts], categories)
   };
 
-  if (menu.categories.length > 0 && menu.products.some((item) => item.type !== "ADDITIONAL")) {
-    writePublicMenuCache(menu);
-  }
-
+  writePublicMenuCache(menu);
   return menu;
 };
 

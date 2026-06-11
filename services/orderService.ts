@@ -58,7 +58,9 @@ const buildCreateOrderPayload = (order: OrderDraft) => ({
       ? order.checkout.deliveryAddress.complement
       : undefined,
   formaPagamento:
-    order.checkout.paymentMethod === "card"
+    order.checkout.fulfillment === "table"
+      ? undefined
+      : order.checkout.paymentMethod === "card"
       ? mapCardPaymentMethod(order.checkout.cardType)
       : mapPaymentMethod(order.checkout.paymentMethod),
   origemPedido: "SITE",
