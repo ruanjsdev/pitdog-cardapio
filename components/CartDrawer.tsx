@@ -156,7 +156,11 @@ export const CartDrawer = ({
               const itemId = cartItem.item.id;
               const extrasIsOpen = openExtrasForItem === itemId;
               const isExtraItem = cartItem.item.type === "ADDITIONAL" || cartItem.item.categoryId === "extras";
-              const canUseExtras = cartItem.item.allowsAdditionals === true;
+              const linkedAddonIds = cartItem.item.addonIds;
+              const availableExtraItems = Array.isArray(linkedAddonIds)
+                ? extraItems.filter((extra) => linkedAddonIds.includes(extra.id))
+                : extraItems;
+              const canUseExtras = cartItem.item.allowsAdditionals === true && availableExtraItems.length > 0;
               const extras = cartItem.extras ?? [];
               const flavorOptions = cartItem.item.options ?? [];
               const selectedFlavor = getSelectedFlavor(cartItem.notes, flavorOptions);
@@ -178,7 +182,7 @@ export const CartDrawer = ({
                         <p>{formatCurrency(cartItem.item.price)}</p>
                       </div>
 
-                      {!isExtraItem && canUseExtras && extraItems.length > 0 && (
+                      {!isExtraItem && canUseExtras && (
                         <button
                           type="button"
                           className="cart-extras-button"
@@ -322,7 +326,7 @@ export const CartDrawer = ({
                       </label>
                     )}
 
-                    {!isExtraItem && canUseExtras && extrasIsOpen && extraItems.length > 0 && (
+                    {!isExtraItem && canUseExtras && extrasIsOpen && (
                       <div className="cart-extras-modal">
                         <div className="cart-extras-modal-header">
                           <div>
@@ -340,7 +344,7 @@ export const CartDrawer = ({
                         </div>
 
                         <div className="cart-extras-list">
-                          {extraItems.map((extra) => {
+                          {availableExtraItems.map((extra) => {
                             const selectedExtra = extras.find(
                               (item) => item.item.id === extra.id
                             );

@@ -17,6 +17,11 @@ type ApiCategory = {
 };
 
 type ApiProduct = {
+  adicionalIds?: Array<string | number>;
+  adicionaisIds?: Array<string | number>;
+  addonIds?: Array<string | number>;
+  additionalIds?: Array<string | number>;
+  addons?: Array<{ id?: string | number; addonId?: string | number } | string | number>;
   id: string | number;
   nome: string;
   descricao?: string;
@@ -271,6 +276,30 @@ const getBeverageOptions = (name: string, description: string) => {
   return flavors.length > 0 ? flavors : undefined;
 };
 
+const normalizeAddonIds = (product: ApiProduct) => {
+  const directIds =
+    product.addonIds ??
+    product.additionalIds ??
+    product.adicionalIds ??
+    product.adicionaisIds;
+
+  if (Array.isArray(directIds)) {
+    return directIds.map(String);
+  }
+
+  if (Array.isArray(product.addons)) {
+    return product.addons
+      .map((addon) => {
+        if (typeof addon === "string" || typeof addon === "number") return addon;
+        return addon.addonId ?? addon.id;
+      })
+      .filter((id): id is string | number => id !== undefined && id !== null)
+      .map(String);
+  }
+
+  return undefined;
+};
+
 const hiddenMarkerChars = /[\u2063\u200b\u200c\u200d\ufeff]/g;
 const subtitleMarkerPatterns = [
   /@@pits[_-]subtitle:([^@]+)@@/i,
@@ -333,6 +362,7 @@ const mapProduct = (product: ApiProduct): MenuItem => {
     inStock: product.estoqueDisponivel,
     order: product.ordem,
     allowsAdditionals: isBeverage(product) ? false : product.permiteAdicionais ?? product.allowsAdditionals ?? true,
+    addonIds: normalizeAddonIds(product),
     tag: tagText,
     options: getBeverageOptions(name, description)
   };

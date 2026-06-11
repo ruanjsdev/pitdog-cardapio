@@ -26,6 +26,7 @@ export interface MenuItem {
   inStock?: boolean;
   order?: number;
   allowsAdditionals?: boolean;
+  addonIds?: string[];
   additionals?: MenuAdditional[];
   options?: string[];
 }
