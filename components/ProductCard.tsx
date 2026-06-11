@@ -39,10 +39,8 @@ export const ProductCard = ({
         }}
       />
 
-      {item.inStock === false ? (
+      {item.inStock === false && (
         <span>Indisponível</span>
-      ) : (
-        displayTag && <span>{displayTag}</span>
       )}
     </div>
 
