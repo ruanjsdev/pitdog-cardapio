@@ -11,3 +11,5 @@ services:
         value: https://pitsdog-api-production.up.railway.app
       - key: VITE_WHATSAPP_BOT_URL
         value: https://pits-dog-bot.onrender.com
+      - key: WHATSAPP_BOT_URL
+        value: https://pits-dog-bot.onrender.com

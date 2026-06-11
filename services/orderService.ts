@@ -1,6 +1,5 @@
 import { CreatedOrder, OrderDraft } from "../types/order";
 import { apiRequest, hasApiUrl } from "./apiClient";
-import { notifyWhatsAppOrderCreated } from "./whatsappBotService";
 
 const mapFulfillment = (fulfillment: OrderDraft["checkout"]["fulfillment"]) => {
   if (fulfillment === "pickup") return "RETIRADA";
@@ -88,16 +87,10 @@ const buildCreateOrderPayload = (order: OrderDraft) => ({
 
 export const createOrderDraft = async (order: OrderDraft): Promise<CreatedOrder> => {
   if (hasApiUrl) {
-    const createdOrder = await apiRequest<CreatedOrder>("/pedidos", {
+    return apiRequest<CreatedOrder>("/pedidos", {
       method: "POST",
       body: JSON.stringify(buildCreateOrderPayload(order))
     });
-
-    notifyWhatsAppOrderCreated(order, createdOrder).catch((error) => {
-      console.warn("Nao foi possivel notificar o bot WhatsApp sobre o pedido criado.", error);
-    });
-
-    return createdOrder;
   }
 
   await new Promise((resolve) => window.setTimeout(resolve, 450));

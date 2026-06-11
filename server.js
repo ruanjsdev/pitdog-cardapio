@@ -6,6 +6,8 @@ import { createServer } from "node:http";
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const distDir = join(rootDir, "dist");
 const backendUrl = (process.env.BACKEND_API_URL ?? "https://pitsdog-api-production.up.railway.app").replace(/\/$/, "");
+const whatsappBotUrl = (process.env.WHATSAPP_BOT_URL ?? process.env.VITE_WHATSAPP_BOT_URL ?? "https://pits-dog-bot.onrender.com").replace(/\/$/, "");
+const whatsappBotPin = process.env.WHATSAPP_ADMIN_PIN ?? process.env.VITE_WHATSAPP_ADMIN_PIN ?? "";
 const port = Number(process.env.PORT ?? 3000);
 
 const contentTypes = {
@@ -39,42 +41,103 @@ function serveFile(response, filePath) {
   createReadStream(filePath).pipe(response);
 }
 
+async function readRequestBody(request) {
+  const chunks = [];
+
+  for await (const chunk of request) {
+    chunks.push(chunk);
+  }
+
+  return Buffer.concat(chunks);
+}
+
+async function notifyWhatsappBot(orderPayload, createdOrder) {
+  if (!whatsappBotUrl) return;
+
+  const customerPhone = String(orderPayload.telefoneCliente || "").replace(/\D/g, "");
+
+  if (!customerPhone || orderPayload.tipoPedido === "MESA") return;
+
+  const total = createdOrder?.total ?? orderPayload.total;
+
+  try {
+    const response = await fetch(`${whatsappBotUrl}/api/notify-order`, {
+      body: JSON.stringify({
+        event: "pedido_criado",
+        order: {
+          code: createdOrder?.numeroPedido ?? createdOrder?.id,
+          customerName: orderPayload.nomeCliente,
+          customerPhone,
+          delivery: orderPayload.tipoPedido,
+          items: Array.isArray(orderPayload.itens) ? orderPayload.itens : [],
+          payment: orderPayload.formaPagamento,
+          paymentMethod: orderPayload.formaPagamento,
+          total,
+        },
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        ...(whatsappBotPin ? { "x-admin-pin": whatsappBotPin } : {}),
+      },
+      method: "POST",
+    });
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload?.ok) {
+      console.warn("[bot] Notificacao de pedido criada recusada.", payload);
+    }
+  } catch (error) {
+    console.warn("[bot] Falha ao notificar pedido criado.", error);
+  }
+}
+
 async function proxyApi(request, response) {
   const targetPath = request.url.replace(/^\/api/, "") || "/";
   const targetUrl = `${backendUrl}${targetPath}`;
   const headers = new Headers(request.headers);
+  const shouldNotifyCreatedOrder = request.method === "POST" && targetPath.split("?")[0] === "/pedidos";
+  const requestBody = request.method === "GET" || request.method === "HEAD" ? undefined : await readRequestBody(request);
+  let parsedOrderPayload = null;
 
   headers.delete("host");
   headers.delete("origin");
   headers.delete("referer");
 
+  if (shouldNotifyCreatedOrder && requestBody?.length) {
+    try {
+      parsedOrderPayload = JSON.parse(requestBody.toString("utf8"));
+    } catch {
+      parsedOrderPayload = null;
+    }
+  }
+
   try {
     const backendResponse = await fetch(targetUrl, {
-      body: request.method === "GET" || request.method === "HEAD" ? undefined : request,
-      duplex: "half",
+      body: requestBody,
       headers,
       method: request.method,
     });
 
     const responseHeaders = new Headers(backendResponse.headers);
     responseHeaders.set("Access-Control-Allow-Origin", "*");
+    const responseBody = Buffer.from(await backendResponse.arrayBuffer());
 
     response.writeHead(backendResponse.status, Object.fromEntries(responseHeaders.entries()));
+    response.end(responseBody);
 
-    if (!backendResponse.body) {
-      response.end();
-      return;
+    if (shouldNotifyCreatedOrder && backendResponse.ok && parsedOrderPayload) {
+      let createdOrder = null;
+
+      try {
+        createdOrder = JSON.parse(responseBody.toString("utf8") || "null");
+        createdOrder = createdOrder?.data ?? createdOrder;
+      } catch {
+        createdOrder = null;
+      }
+
+      void notifyWhatsappBot(parsedOrderPayload, createdOrder);
     }
-
-    const reader = backendResponse.body.getReader();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      response.write(value);
-    }
-
-    response.end();
   } catch (error) {
     console.error("[proxy] API request failed", error);
     sendText(response, 502, "Nao foi possivel conectar na API.\n");
