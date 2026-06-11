@@ -554,13 +554,14 @@ img {
   display: inline-flex;
   width: fit-content;
   margin-top: 0.65rem;
-  padding: 0.28rem 0.55rem;
-  border: 1px solid rgba(255, 163, 26, 0.35);
+  padding: 0.42rem 0.72rem;
+  border: 1px solid rgba(255, 163, 26, 0.88);
   border-radius: 999px;
-  background: rgba(255, 106, 0, 0.14);
-  color: var(--orange-soft);
+  background: rgba(255, 106, 0, 0.12);
+  color: #ffad2f;
   font-size: 0.72rem;
   font-weight: 900;
+  line-height: 1;
   text-transform: uppercase;
 }
 

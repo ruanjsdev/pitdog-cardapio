@@ -49,7 +49,7 @@ export const ProductCard = ({
         <h3>{item.name}</h3>
         <p>{item.description}</p>
         {displayTag && item.inStock !== false && (
-          <span className="product-card__tag-line">{displayTag}</span>
+          <span className="product-card__tag-line">{displayTag.toUpperCase()}</span>
         )}
       </div>
 

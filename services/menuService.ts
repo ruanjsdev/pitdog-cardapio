@@ -64,6 +64,10 @@ type PublicMenu = {
 };
 
 const publicMenuCacheKey = "pitsdog:public-menu:v1";
+const subtitleMarkerPrefix = "@@PITS_SUBTITLE:";
+const subtitleMarkerSuffix = "@@";
+const invisibleSubtitlePrefix = "\u2063pits-subtitle:";
+const invisibleSubtitleSuffix = "\u2063";
 let pendingPublicMenuRequest: Promise<PublicMenu> | null = null;
 
 type PublicMenuCache = {
@@ -252,10 +256,84 @@ const getJuiceOptions = (name: string, description: string) => {
   return flavors.length > 0 ? flavors : undefined;
 };
 
+const readProductDescription = (rawDescription = "") => {
+  const invisibleMarkerStart = rawDescription.lastIndexOf(invisibleSubtitlePrefix);
+
+  if (invisibleMarkerStart !== -1) {
+    const invisibleMarkerEnd = rawDescription.indexOf(
+      invisibleSubtitleSuffix,
+      invisibleMarkerStart + invisibleSubtitlePrefix.length
+    );
+
+    if (invisibleMarkerEnd !== -1) {
+      const encodedSubtitle = rawDescription.slice(
+        invisibleMarkerStart + invisibleSubtitlePrefix.length,
+        invisibleMarkerEnd
+      );
+
+      try {
+        return {
+          description: rawDescription.slice(0, invisibleMarkerStart).trimEnd(),
+          subtitle: decodeURIComponent(encodedSubtitle)
+        };
+      } catch {
+        return {
+          description: rawDescription.slice(0, invisibleMarkerStart).trimEnd(),
+          subtitle: ""
+        };
+      }
+    }
+  }
+
+  const normalizedDescription = rawDescription.toLowerCase();
+  const markerStart = normalizedDescription.lastIndexOf(subtitleMarkerPrefix.toLowerCase());
+
+  if (markerStart === -1) {
+    return {
+      description: rawDescription,
+      subtitle: ""
+    };
+  }
+
+  const markerEnd = rawDescription.indexOf(
+    subtitleMarkerSuffix,
+    markerStart + subtitleMarkerPrefix.length
+  );
+
+  if (markerEnd === -1) {
+    return {
+      description: rawDescription,
+      subtitle: ""
+    };
+  }
+
+  const encodedSubtitle = rawDescription.slice(
+    markerStart + subtitleMarkerPrefix.length,
+    markerEnd
+  );
+
+  try {
+    return {
+      description: rawDescription.slice(0, markerStart).trimEnd(),
+      subtitle: decodeURIComponent(encodedSubtitle)
+    };
+  } catch {
+    return {
+      description: rawDescription.slice(0, markerStart).trimEnd(),
+      subtitle: ""
+    };
+  }
+};
+
 const mapProduct = (product: ApiProduct): MenuItem => {
   const name = product.nome;
-  const description = product.descricao ?? "";
-  const tagText = product.highlight || product.subtitulo || (product.destaque ? "Destaque" : undefined);
+  const decodedDescription = readProductDescription(product.descricao ?? "");
+  const description = decodedDescription.description;
+  const tagText =
+    product.highlight ||
+    product.subtitulo ||
+    decodedDescription.subtitle ||
+    (product.destaque ? "Destaque" : undefined);
 
   return {
     id: String(product.id),
@@ -267,7 +345,7 @@ const mapProduct = (product: ApiProduct): MenuItem => {
     promotionalPrice: product.precoPromocional,
     image: resolveProductImage(product),
     active: product.ativo,
-    featured: product.destaque || !!(product.highlight || product.subtitulo),
+    featured: product.destaque || !!(product.highlight || product.subtitulo || decodedDescription.subtitle),
     inStock: product.estoqueDisponivel,
     order: product.ordem,
     allowsAdditionals: isBeverage(product) ? false : product.permiteAdicionais ?? product.allowsAdditionals ?? true,

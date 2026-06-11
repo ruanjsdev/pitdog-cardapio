@@ -195,6 +195,35 @@ export const App = () => {
   }, [isCartOpen, showCheckout]);
 
   useEffect(() => {
+    const guardState = { pitsDogBackGuard: true };
+
+    if (!window.history.state?.pitsDogBackGuard) {
+      window.history.replaceState({ pitsDogHome: true }, "", window.location.href);
+      window.history.pushState(guardState, "", window.location.href);
+    }
+
+    const handleBackButton = () => {
+      if (showSuccess) {
+        setShowSuccess(false);
+      } else if (showCheckout) {
+        setShowCheckout(false);
+      } else if (isCartOpen) {
+        setIsCartOpen(false);
+      } else if (window.scrollY > 80) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      window.history.pushState(guardState, "", window.location.href);
+    };
+
+    window.addEventListener("popstate", handleBackButton);
+
+    return () => {
+      window.removeEventListener("popstate", handleBackButton);
+    };
+  }, [isCartOpen, showCheckout, showSuccess]);
+
+  useEffect(() => {
     if (isMenuLoading || !hasConfirmedMenuLoad || cart.items.length === 0) return;
 
     const availableProductIds = new Set(products.map((item) => item.id));
