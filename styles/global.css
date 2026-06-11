@@ -552,17 +552,26 @@ img {
 
 .product-card__tag-line {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: fit-content;
-  margin-top: 0.65rem;
-  padding: 0.42rem 0.72rem;
-  border: 1px solid rgba(255, 163, 26, 0.88);
+  max-width: 100%;
+  margin-top: 0.78rem;
+  padding: 0.43rem 0.78rem;
+  border: 1.5px solid #d98400;
   border-radius: 999px;
-  background: rgba(255, 106, 0, 0.12);
+  background: linear-gradient(180deg, rgba(55, 30, 4, 0.92), rgba(30, 17, 5, 0.94));
+  box-shadow:
+    0 0 0 1px rgba(255, 171, 45, 0.12),
+    0 8px 18px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 196, 82, 0.16);
   color: #ffad2f;
   font-size: 0.72rem;
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.05;
+  text-align: center;
   text-transform: uppercase;
+  white-space: normal;
 }
 
 .product-footer {
