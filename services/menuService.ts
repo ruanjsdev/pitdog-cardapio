@@ -64,10 +64,6 @@ type PublicMenu = {
 };
 
 const publicMenuCacheKey = "pitsdog:public-menu:v1";
-const subtitleMarkerPrefix = "@@PITS_SUBTITLE:";
-const subtitleMarkerSuffix = "@@";
-const invisibleSubtitlePrefix = "\u2063pits-subtitle:";
-const invisibleSubtitleSuffix = "\u2063";
 let pendingPublicMenuRequest: Promise<PublicMenu> | null = null;
 
 type PublicMenuCache = {
@@ -256,73 +252,42 @@ const getJuiceOptions = (name: string, description: string) => {
   return flavors.length > 0 ? flavors : undefined;
 };
 
+const hiddenMarkerChars = /[\u2063\u200b\u200c\u200d\ufeff]/g;
+const subtitleMarkerPatterns = [
+  /@@pits[_-]subtitle:([^@]+)@@/i,
+  /[\u2063\u200b\u200c\u200d\ufeff]*pits[_-]subtitle:([^\s<>&\u2063\u200b\u200c\u200d\ufeff.]+)[\u2063\u200b\u200c\u200d\ufeff]*/i
+];
+
+const decodeSubtitle = (value = "") => {
+  try {
+    return decodeURIComponent(value.trim());
+  } catch {
+    return value.trim();
+  }
+};
+
+const cleanDescriptionAfterMarkerRemoval = (value = "") =>
+  value
+    .replace(hiddenMarkerChars, "")
+    .replace(/\s*(?:\.{3}|…)\s*$/u, "")
+    .trim();
+
 const readProductDescription = (rawDescription = "") => {
-  const invisibleMarkerStart = rawDescription.lastIndexOf(invisibleSubtitlePrefix);
+  for (const pattern of subtitleMarkerPatterns) {
+    const match = rawDescription.match(pattern);
 
-  if (invisibleMarkerStart !== -1) {
-    const invisibleMarkerEnd = rawDescription.indexOf(
-      invisibleSubtitleSuffix,
-      invisibleMarkerStart + invisibleSubtitlePrefix.length
-    );
-
-    if (invisibleMarkerEnd !== -1) {
-      const encodedSubtitle = rawDescription.slice(
-        invisibleMarkerStart + invisibleSubtitlePrefix.length,
-        invisibleMarkerEnd
-      );
-
-      try {
-        return {
-          description: rawDescription.slice(0, invisibleMarkerStart).trimEnd(),
-          subtitle: decodeURIComponent(encodedSubtitle)
-        };
-      } catch {
-        return {
-          description: rawDescription.slice(0, invisibleMarkerStart).trimEnd(),
-          subtitle: ""
-        };
-      }
+    if (match?.[0]) {
+      return {
+        description: cleanDescriptionAfterMarkerRemoval(rawDescription.replace(match[0], "")),
+        subtitle: decodeSubtitle(match[1])
+      };
     }
   }
 
-  const normalizedDescription = rawDescription.toLowerCase();
-  const markerStart = normalizedDescription.lastIndexOf(subtitleMarkerPrefix.toLowerCase());
-
-  if (markerStart === -1) {
-    return {
-      description: rawDescription,
-      subtitle: ""
-    };
-  }
-
-  const markerEnd = rawDescription.indexOf(
-    subtitleMarkerSuffix,
-    markerStart + subtitleMarkerPrefix.length
-  );
-
-  if (markerEnd === -1) {
-    return {
-      description: rawDescription,
-      subtitle: ""
-    };
-  }
-
-  const encodedSubtitle = rawDescription.slice(
-    markerStart + subtitleMarkerPrefix.length,
-    markerEnd
-  );
-
-  try {
-    return {
-      description: rawDescription.slice(0, markerStart).trimEnd(),
-      subtitle: decodeURIComponent(encodedSubtitle)
-    };
-  } catch {
-    return {
-      description: rawDescription.slice(0, markerStart).trimEnd(),
-      subtitle: ""
-    };
-  }
+  return {
+    description: cleanDescriptionAfterMarkerRemoval(rawDescription),
+    subtitle: ""
+  };
 };
 
 const mapProduct = (product: ApiProduct): MenuItem => {
