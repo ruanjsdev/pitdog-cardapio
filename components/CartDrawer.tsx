@@ -276,7 +276,7 @@ export const CartDrawer = ({
 
                     {!isExtraItem && isBeverage && flavorOptions.length > 0 && (
                       <div className="cart-item-notes">
-                        <span>Sabor do suco</span>
+                        <span>Sabor da bebida</span>
                         <div className="quick-note-chips" aria-label="Sabores disponíveis">
                           {flavorOptions.map((flavor) => (
                             <button

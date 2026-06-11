@@ -241,13 +241,32 @@ const isBeverage = (product: ApiProduct) => {
   return categoryName.includes("bebida") || productName.includes("refri") || productName.includes("suco");
 };
 
-const getJuiceOptions = (name: string, description: string) => {
+const getBeverageOptions = (name: string, description: string) => {
   const searchable = normalizeText(`${name} ${description}`);
 
-  if (!searchable.includes("suco")) return undefined;
+  if (searchable.includes("suco")) {
+    const knownJuiceFlavors = ["Maracujá", "Acerola", "Abacaxi", "Cajá", "Cupuaçu", "Goiaba", "Graviola", "Manga", "Uva"];
+    const flavors = knownJuiceFlavors.filter((flavor) => searchable.includes(normalizeText(flavor)));
 
-  const knownFlavors = ["Maracujá", "Acerola", "Abacaxi"];
-  const flavors = knownFlavors.filter((flavor) => searchable.includes(normalizeText(flavor)));
+    return flavors.length > 0 ? flavors : undefined;
+  }
+
+  if (!searchable.includes("refrigerante") && !searchable.includes("refri")) return undefined;
+
+  const knownSodaFlavors = [
+    "Coca-Cola",
+    "Coca-Cola Zero",
+    "Guaraná",
+    "Guaraná Zero",
+    "Fanta Laranja",
+    "Fanta Uva",
+    "Sprite",
+    "Pepsi",
+    "Soda",
+    "Kuat",
+    "Jesus"
+  ];
+  const flavors = knownSodaFlavors.filter((flavor) => searchable.includes(normalizeText(flavor)));
 
   return flavors.length > 0 ? flavors : undefined;
 };
@@ -315,7 +334,7 @@ const mapProduct = (product: ApiProduct): MenuItem => {
     order: product.ordem,
     allowsAdditionals: isBeverage(product) ? false : product.permiteAdicionais ?? product.allowsAdditionals ?? true,
     tag: tagText,
-    options: getJuiceOptions(name, description)
+    options: getBeverageOptions(name, description)
   };
 };
 
