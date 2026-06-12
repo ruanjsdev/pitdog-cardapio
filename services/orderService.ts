@@ -58,10 +58,12 @@ const buildCreateOrderPayload = (order: OrderDraft) => ({
       : undefined,
   formaPagamento:
     order.checkout.fulfillment === "table"
-      ? undefined
+      ? "DINHEIRO"
       : order.checkout.paymentMethod === "card"
       ? mapCardPaymentMethod(order.checkout.cardType)
       : mapPaymentMethod(order.checkout.paymentMethod),
+  statusPagamento: order.checkout.fulfillment === "table" ? "PENDENTE" : undefined,
+  pagamentoConfirmado: order.checkout.fulfillment === "table" ? false : undefined,
   origemPedido: "SITE",
   observacao: "",
   itens: order.items.map((cartItem) => {

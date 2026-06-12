@@ -504,7 +504,7 @@ export const App = () => {
               missingMinimum={missingMinimum}
               onClose={() => setShowCheckout(false)}
               onFinishOrder={(createdOrder) => {
-                setFinishedPaymentMethod(checkout.paymentMethod);
+                setFinishedPaymentMethod(checkout.fulfillment === "table" ? null : checkout.paymentMethod);
                 setFinishedOrder(createdOrder);
                 setPixCopied(false);
                 setShowCheckout(false);
