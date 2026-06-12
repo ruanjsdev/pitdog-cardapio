@@ -2876,6 +2876,12 @@ img {
   background: rgba(255, 106, 0, 0.2);
 }
 
+.cart-extras-button.is-selected {
+  border-color: rgba(255, 184, 107, 0.7);
+  background: rgba(255, 106, 0, 0.22);
+  color: #ffd7a8;
+}
+
 .cart-extras-panel {
   margin-top: 12px;
   padding: 10px;
@@ -2988,6 +2994,17 @@ img {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.cart-change-flavor-button {
+  border: 1px solid rgba(255, 106, 0, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 106, 0, 0.12);
+  color: var(--orange-soft);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 850;
+  padding: 5px 9px;
 }
 
 .cart-selected-extra-actions button,
@@ -3161,6 +3178,49 @@ img {
   color: #160c04;
   font-weight: 900;
   cursor: pointer;
+}
+
+.cart-flavor-modal {
+  width: min(390px, 100%);
+}
+
+.cart-flavor-list {
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.cart-flavor-list button {
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.cart-flavor-list button span {
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.cart-flavor-list button strong {
+  color: var(--orange-soft);
+  font-size: 0.7rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.cart-flavor-list button.is-selected {
+  border-color: rgba(255, 184, 107, 0.68);
+  background: rgba(255, 106, 0, 0.2);
 }
 
 @media (max-width: 520px) {

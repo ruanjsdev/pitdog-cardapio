@@ -58,6 +58,9 @@ export const CartDrawer = ({
   const [openExtrasForItem, setOpenExtrasForItem] = useState<string | null>(
     null
   );
+  const [openFlavorForItem, setOpenFlavorForItem] = useState<string | null>(
+    null
+  );
 
   const handleAddMore = () => {
     if (onAddMore) {
@@ -114,6 +117,11 @@ export const CartDrawer = ({
   const extrasModalItem = items.find((cartItem) => cartItem.item.id === openExtrasForItem);
   const extrasModalOptions = extrasModalItem ? getAvailableExtras(extrasModalItem.item) : [];
   const extrasModalSelected = extrasModalItem?.extras ?? [];
+  const flavorModalItem = items.find((cartItem) => cartItem.item.id === openFlavorForItem);
+  const flavorModalOptions = flavorModalItem?.item.options ?? [];
+  const flavorModalSelected = flavorModalItem
+    ? getSelectedFlavor(flavorModalItem.notes, flavorModalOptions)
+    : "";
 
   const toggleQuickNote = (itemId: string, note: string, currentNotes = "") => {
     const parts = currentNotes
@@ -203,6 +211,20 @@ export const CartDrawer = ({
                           Adicionais
                         </button>
                       )}
+
+                      {!isExtraItem && isBeverage && flavorOptions.length > 0 && (
+                        <button
+                          type="button"
+                          className={`cart-extras-button ${selectedFlavor ? "is-selected" : ""}`}
+                          onClick={() =>
+                            setOpenFlavorForItem((current) =>
+                              current === itemId ? null : itemId
+                            )
+                          }
+                        >
+                          {selectedFlavor || "Sabor"}
+                        </button>
+                      )}
                     </div>
 
                     <div className="quantity-control">
@@ -286,20 +308,18 @@ export const CartDrawer = ({
                       </div>
                     )}
 
-                    {!isExtraItem && isBeverage && flavorOptions.length > 0 && (
-                      <div className="cart-item-notes">
-                        <span>Sabor da bebida</span>
-                        <div className="quick-note-chips" aria-label="Sabores disponíveis">
-                          {flavorOptions.map((flavor) => (
-                            <button
-                              key={flavor}
-                              type="button"
-                              className={selectedFlavor === flavor ? "is-selected" : ""}
-                              onClick={() => selectFlavor(itemId, flavor)}
-                            >
-                              {flavor}
-                            </button>
-                          ))}
+                    {!isExtraItem && isBeverage && selectedFlavor && (
+                      <div className="cart-selected-extras">
+                        <strong>Sabor escolhido:</strong>
+                        <div className="cart-selected-extra">
+                          <span>{selectedFlavor}</span>
+                          <button
+                            type="button"
+                            className="cart-change-flavor-button"
+                            onClick={() => setOpenFlavorForItem(itemId)}
+                          >
+                            Trocar
+                          </button>
                         </div>
                       </div>
                     )}
@@ -477,6 +497,51 @@ export const CartDrawer = ({
             >
               Confirmar adicionais
             </button>
+          </section>
+        </div>
+      )}
+
+      {flavorModalItem && flavorModalOptions.length > 0 && (
+        <div className="cart-extras-screen" role="dialog" aria-modal="true" aria-label="Escolher sabor">
+          <button
+            className="cart-extras-screen-backdrop"
+            type="button"
+            onClick={() => setOpenFlavorForItem(null)}
+            aria-label="Fechar sabores"
+          />
+
+          <section className="cart-extras-modal cart-flavor-modal">
+            <div className="cart-extras-modal-header">
+              <div>
+                <strong>Escolha o sabor</strong>
+                <span>Para: {flavorModalItem.item.name}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOpenFlavorForItem(null)}
+                aria-label="Fechar sabores"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="cart-flavor-list">
+              {flavorModalOptions.map((flavor) => (
+                <button
+                  key={flavor}
+                  type="button"
+                  className={flavorModalSelected === flavor ? "is-selected" : ""}
+                  onClick={() => {
+                    selectFlavor(flavorModalItem.item.id, flavor);
+                    setOpenFlavorForItem(null);
+                  }}
+                >
+                  <span>{flavor}</span>
+                  {flavorModalSelected === flavor && <strong>Escolhido</strong>}
+                </button>
+              ))}
+            </div>
           </section>
         </div>
       )}
