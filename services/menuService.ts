@@ -394,7 +394,7 @@ const filterItemsByActiveCategories = (items: MenuItem[], categories: MenuCatego
   const activeCategoryIds = new Set(categories.map((category) => category.id));
 
   return items.filter((item) =>
-    item.type === "ADDITIONAL" || activeCategoryIds.has(item.categoryId)
+    item.type === "ADDITIONAL" || item.categoryId === "extras" || activeCategoryIds.has(item.categoryId)
   );
 };
 

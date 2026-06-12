@@ -306,7 +306,7 @@ export const App = () => {
   );
 
   const extraItems = useMemo(
-    () => products.filter((item) => item.categoryId === "extras"),
+    () => products.filter((item) => item.type === "ADDITIONAL" || item.categoryId === "extras"),
     [products]
   );
 
