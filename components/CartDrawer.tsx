@@ -16,7 +16,7 @@ interface CartDrawerProps {
     total: number;
   };
   onClose: () => void;
-  onAddItem: (item: MenuItem) => void;
+  onAddItem: (item: MenuItem, notes?: string) => void;
   onDecreaseItem: (itemId: string) => void;
   onRemoveItem: (itemId: string) => void;
   onUpdateItemNotes: (itemId: string, notes: string) => void;
@@ -58,10 +58,6 @@ export const CartDrawer = ({
   const [openExtrasForItem, setOpenExtrasForItem] = useState<string | null>(
     null
   );
-  const [openFlavorForItem, setOpenFlavorForItem] = useState<string | null>(
-    null
-  );
-
   const handleAddMore = () => {
     if (onAddMore) {
       onAddMore();
@@ -102,10 +98,6 @@ export const CartDrawer = ({
     return flavorOptions.find((flavor) => normalizedNotes === normalizeText(flavor)) ?? "";
   };
 
-  const selectFlavor = (itemId: string, flavor: string) => {
-    onUpdateItemNotes(itemId, flavor);
-  };
-
   const getAvailableExtras = (item: MenuItem) => {
     const linkedAddonIds = item.addonIds;
 
@@ -114,15 +106,10 @@ export const CartDrawer = ({
       : extraItems;
   };
 
-  const extrasModalItem = items.find((cartItem) => cartItem.item.id === openExtrasForItem);
+  const getCartItemKey = (cartItem: CartItem) => cartItem.cartId ?? cartItem.item.id;
+  const extrasModalItem = items.find((cartItem) => getCartItemKey(cartItem) === openExtrasForItem);
   const extrasModalOptions = extrasModalItem ? getAvailableExtras(extrasModalItem.item) : [];
   const extrasModalSelected = extrasModalItem?.extras ?? [];
-  const flavorModalItem = items.find((cartItem) => cartItem.item.id === openFlavorForItem);
-  const flavorModalOptions = flavorModalItem?.item.options ?? [];
-  const flavorModalSelected = flavorModalItem
-    ? getSelectedFlavor(flavorModalItem.notes, flavorModalOptions)
-    : "";
-
   const toggleQuickNote = (itemId: string, note: string, currentNotes = "") => {
     const parts = currentNotes
       .split(",")
@@ -173,7 +160,7 @@ export const CartDrawer = ({
         ) : (
           <div className="cart-items">
             {items.map((cartItem) => {
-              const itemId = cartItem.item.id;
+              const itemId = cartItem.cartId ?? cartItem.item.id;
               const isExtraItem = cartItem.item.type === "ADDITIONAL" || cartItem.item.categoryId === "extras";
               const availableExtraItems = getAvailableExtras(cartItem.item);
               const canUseExtras = cartItem.item.allowsAdditionals === true && availableExtraItems.length > 0;
@@ -212,19 +199,6 @@ export const CartDrawer = ({
                         </button>
                       )}
 
-                      {!isExtraItem && isBeverage && flavorOptions.length > 0 && (
-                        <button
-                          type="button"
-                          className={`cart-extras-button ${selectedFlavor ? "is-selected" : ""}`}
-                          onClick={() =>
-                            setOpenFlavorForItem((current) =>
-                              current === itemId ? null : itemId
-                            )
-                          }
-                        >
-                          {selectedFlavor || "Sabor"}
-                        </button>
-                      )}
                     </div>
 
                     <div className="quantity-control">
@@ -240,7 +214,7 @@ export const CartDrawer = ({
 
                       <button
                         type="button"
-                        onClick={() => onAddItem(cartItem.item)}
+                        onClick={() => onAddItem(cartItem.item, cartItem.notes)}
                         aria-label="Aumentar"
                       >
                         <Plus size={15} />
@@ -313,13 +287,6 @@ export const CartDrawer = ({
                         <strong>Sabor escolhido:</strong>
                         <div className="cart-selected-extra">
                           <span>{selectedFlavor}</span>
-                          <button
-                            type="button"
-                            className="cart-change-flavor-button"
-                            onClick={() => setOpenFlavorForItem(itemId)}
-                          >
-                            Trocar
-                          </button>
                         </div>
                       </div>
                     )}
@@ -465,7 +432,7 @@ export const CartDrawer = ({
                     <div className="cart-extra-option-actions">
                       <button
                         type="button"
-                        onClick={() => onDecreaseExtraFromItem(extrasModalItem.item.id, extra.id)}
+                        onClick={() => onDecreaseExtraFromItem(getCartItemKey(extrasModalItem), extra.id)}
                         disabled={!selectedExtra}
                         aria-label="Diminuir adicional"
                       >
@@ -476,7 +443,7 @@ export const CartDrawer = ({
 
                       <button
                         type="button"
-                        onClick={() => onAddExtraToItem(extrasModalItem.item.id, extra)}
+                        onClick={() => onAddExtraToItem(getCartItemKey(extrasModalItem), extra)}
                         aria-label="Adicionar adicional"
                       >
                         <Plus size={14} />
@@ -501,50 +468,6 @@ export const CartDrawer = ({
         </div>
       )}
 
-      {flavorModalItem && flavorModalOptions.length > 0 && (
-        <div className="cart-extras-screen" role="dialog" aria-modal="true" aria-label="Escolher sabor">
-          <button
-            className="cart-extras-screen-backdrop"
-            type="button"
-            onClick={() => setOpenFlavorForItem(null)}
-            aria-label="Fechar sabores"
-          />
-
-          <section className="cart-extras-modal cart-flavor-modal">
-            <div className="cart-extras-modal-header">
-              <div>
-                <strong>Escolha o sabor</strong>
-                <span>Para: {flavorModalItem.item.name}</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setOpenFlavorForItem(null)}
-                aria-label="Fechar sabores"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="cart-flavor-list">
-              {flavorModalOptions.map((flavor) => (
-                <button
-                  key={flavor}
-                  type="button"
-                  className={flavorModalSelected === flavor ? "is-selected" : ""}
-                  onClick={() => {
-                    selectFlavor(flavorModalItem.item.id, flavor);
-                    setOpenFlavorForItem(null);
-                  }}
-                >
-                  <span>{flavor}</span>
-                  {flavorModalSelected === flavor && <strong>Escolhido</strong>}
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   );
 };

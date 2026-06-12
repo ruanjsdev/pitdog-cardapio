@@ -31,13 +31,18 @@ export const useCart = () => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextItems));
   };
 
-  const addItem = (item: MenuItem) => {
-    const existing = items.find((cartItem) => cartItem.item.id === item.id);
+  const getCartItemKey = (cartItem: CartItemWithExtras) => cartItem.cartId ?? cartItem.item.id;
+
+  const addItem = (item: MenuItem, notes = "") => {
+    const normalizedNotes = notes.trim();
+    const existing = items.find((cartItem) =>
+      cartItem.item.id === item.id && (cartItem.notes ?? "") === normalizedNotes
+    );
 
     if (existing) {
       syncCart(
         items.map((cartItem) =>
-          cartItem.item.id === item.id
+          getCartItemKey(cartItem) === getCartItemKey(existing)
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem
         )
@@ -48,7 +53,9 @@ export const useCart = () => {
     syncCart([
       ...items,
       {
+        cartId: `${item.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         item,
+        notes: normalizedNotes,
         quantity: 1,
         extras: [],
       },
@@ -59,7 +66,7 @@ export const useCart = () => {
     syncCart(
       items
         .map((cartItem) =>
-          cartItem.item.id === itemId
+          getCartItemKey(cartItem) === itemId
             ? { ...cartItem, quantity: cartItem.quantity - 1 }
             : cartItem
         )
@@ -68,13 +75,13 @@ export const useCart = () => {
   };
 
   const removeItem = (itemId: string) => {
-    syncCart(items.filter((cartItem) => cartItem.item.id !== itemId));
+    syncCart(items.filter((cartItem) => getCartItemKey(cartItem) !== itemId));
   };
 
   const updateItemNotes = (itemId: string, notes: string) => {
     syncCart(
       items.map((cartItem) =>
-        cartItem.item.id === itemId
+        getCartItemKey(cartItem) === itemId
           ? { ...cartItem, notes }
           : cartItem
       )
@@ -84,7 +91,7 @@ export const useCart = () => {
   const addExtraToItem = (parentItemId: string, extraItem: MenuItem) => {
     syncCart(
       items.map((cartItem) => {
-        if (cartItem.item.id !== parentItemId) return cartItem;
+        if (getCartItemKey(cartItem) !== parentItemId) return cartItem;
 
         const currentExtras = cartItem.extras ?? [];
 
@@ -120,7 +127,7 @@ export const useCart = () => {
   const decreaseExtraFromItem = (parentItemId: string, extraItemId: string) => {
     syncCart(
       items.map((cartItem) => {
-        if (cartItem.item.id !== parentItemId) return cartItem;
+        if (getCartItemKey(cartItem) !== parentItemId) return cartItem;
 
         const currentExtras = cartItem.extras ?? [];
 
@@ -141,7 +148,7 @@ export const useCart = () => {
   const removeExtraFromItem = (parentItemId: string, extraItemId: string) => {
     syncCart(
       items.map((cartItem) => {
-        if (cartItem.item.id !== parentItemId) return cartItem;
+        if (getCartItemKey(cartItem) !== parentItemId) return cartItem;
 
         return {
           ...cartItem,

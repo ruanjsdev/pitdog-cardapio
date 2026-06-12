@@ -244,7 +244,7 @@ export const CheckoutSection = ({
         {/* ITENS */}
         <div className="order-mini-list">
           {orderDraft.items.map((cartItem) => (
-            <div key={cartItem.item.id}>
+            <div key={cartItem.cartId ?? cartItem.item.id}>
               <span>{cartItem.quantity}x {cartItem.item.name}</span>
               <strong>{formatCurrency(cartItem.item.price * cartItem.quantity)}</strong>
             </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 
 import { AboutSection } from "../components/AboutSection";
 import { CartDrawer } from "../components/CartDrawer";
@@ -99,6 +100,7 @@ export const App = () => {
   const [hasConfirmedMenuLoad, setHasConfirmedMenuLoad] = useState(false);
   const [finishedPaymentMethod, setFinishedPaymentMethod] = useState<CheckoutForm["paymentMethod"] | null>(null);
   const [finishedOrder, setFinishedOrder] = useState<CreatedOrder | null>(null);
+  const [pendingFlavorItem, setPendingFlavorItem] = useState<MenuItem | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
 
   const [checkout, setCheckout] = useState<CheckoutForm>(() => loadCheckout());
@@ -187,12 +189,12 @@ export const App = () => {
   }, []);
 
   useEffect(() => {
-    if (isCartOpen || showCheckout) {
+    if (isCartOpen || showCheckout || pendingFlavorItem) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
-  }, [isCartOpen, showCheckout]);
+  }, [isCartOpen, pendingFlavorItem, showCheckout]);
 
   useEffect(() => {
     const guardState = { pitsDogBackGuard: true };
@@ -339,6 +341,25 @@ export const App = () => {
     showPopup("Adicionado ao pedido", item.name);
   };
 
+  const addMenuItem = (item: MenuItem, flavor = "") => {
+    cart.addItem(item, flavor);
+    showAddedItemPopup(item);
+  };
+
+  const requestAddMenuItem = (item: MenuItem) => {
+    if (!storeConfig.lojaAberta) {
+      showStoreClosedPopup();
+      return;
+    }
+
+    if ((item.options ?? []).length > 0) {
+      setPendingFlavorItem(item);
+      return;
+    }
+
+    addMenuItem(item);
+  };
+
   const showStoreClosedPopup = () => {
     showPopup(
       "Loja fechada",
@@ -381,28 +402,11 @@ export const App = () => {
           storeConfig={storeConfig}
           onClosedAttempt={showStoreClosedPopup}
           getItemQuantity={(itemId) => {
-            const itemInCart = cart.items.find((cartItem: any) => {
-              const cartItemId =
-                cartItem.id ??
-                cartItem.item?.id ??
-                cartItem.product?.id ??
-                cartItem.menuItem?.id ??
-                cartItem.productId;
-
-              return String(cartItemId) === String(itemId);
-            });
-
-            return itemInCart?.quantity ?? 0;
+            return cart.items
+              .filter((cartItem: any) => String(cartItem.item?.id ?? cartItem.productId) === String(itemId))
+              .reduce((total, cartItem) => total + cartItem.quantity, 0);
           }}
-          onAddItem={(item) => {
-            if (!storeConfig.lojaAberta) {
-              showStoreClosedPopup();
-              return;
-            }
-
-            cart.addItem(item);
-            showAddedItemPopup(item);
-          }}
+          onAddItem={requestAddMenuItem}
         />
 
         {addedPopup && (
@@ -425,13 +429,13 @@ export const App = () => {
           summary={cartSummary}
           extraItems={extraItems}
           onClose={() => setIsCartOpen(false)}
-          onAddItem={(item) => {
+          onAddItem={(item, notes) => {
             if (!storeConfig.lojaAberta) {
               showStoreClosedPopup();
               return;
             }
 
-            cart.addItem(item);
+            cart.addItem(item, notes);
             showAddedItemPopup(item);
           }}
           onDecreaseItem={cart.decreaseItem}
@@ -510,6 +514,49 @@ export const App = () => {
               }}
             />
           </div>
+        </div>
+      )}
+
+      {pendingFlavorItem && pendingFlavorItem.options && pendingFlavorItem.options.length > 0 && (
+        <div className="cart-extras-screen" role="dialog" aria-modal="true" aria-label="Escolher sabor">
+          <button
+            className="cart-extras-screen-backdrop"
+            type="button"
+            onClick={() => setPendingFlavorItem(null)}
+            aria-label="Fechar sabores"
+          />
+
+          <section className="cart-extras-modal cart-flavor-modal">
+            <div className="cart-extras-modal-header">
+              <div>
+                <strong>Escolha o sabor</strong>
+                <span>Para: {pendingFlavorItem.name}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPendingFlavorItem(null)}
+                aria-label="Fechar sabores"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="cart-flavor-list">
+              {pendingFlavorItem.options.map((flavor) => (
+                <button
+                  key={flavor}
+                  type="button"
+                  onClick={() => {
+                    addMenuItem(pendingFlavorItem, flavor);
+                    setPendingFlavorItem(null);
+                  }}
+                >
+                  <span>{flavor}</span>
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
       )}
 

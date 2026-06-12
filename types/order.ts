@@ -6,6 +6,7 @@ export interface CartAddon {
 }
 
 export interface CartItem {
+  cartId?: string;
   item: MenuItem;
   quantity: number;
   notes?: string;
