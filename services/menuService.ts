@@ -9,6 +9,7 @@ type ApiCategory = {
   descricao?: string;
   imagem?: string | null;
   imagemUrl?: string | null;
+  imageUrl?: string | null;
   image?: string;
   headline?: string;
   highlight?: string;
@@ -29,6 +30,7 @@ type ApiProduct = {
   precoPromocional?: number | null;
   imagem?: string | null;
   imagemUrl?: string | null;
+  imageUrl?: string | null;
   categoriaId: string | number;
   categoria?: { id?: string | number; nome?: string };
   categoriaNome?: string;
@@ -44,6 +46,9 @@ type ApiProduct = {
 
 type ApiAdditional = {
   id: string | number;
+  imageUrl?: string | null;
+  imagem?: string | null;
+  imagemUrl?: string | null;
   nomeAdicional?: string;
   nomedAicional?: string;
   nome?: string;
@@ -58,6 +63,7 @@ type ApiCombo = {
   preco: number;
   imagem?: string | null;
   imagemUrl?: string | null;
+  imageUrl?: string | null;
   ativo?: boolean;
   destaque?: boolean;
   ordem?: number;
@@ -115,7 +121,7 @@ const mapCategory = (category: ApiCategory): MenuCategory => ({
   name: category.nome,
   description: category.descricao ?? "",
   image:
-    category.imagem ?? category.imagemUrl ?? category.image ?? "/assets/pits-logo.svg",
+    category.imageUrl ?? category.imagemUrl ?? category.imagem ?? category.image ?? "/assets/pits-logo.svg",
   headline: category.headline ?? category.nome,
   highlight: category.highlight ?? category.descricao ?? "",
   ordem: category.ordem,
@@ -215,8 +221,10 @@ export const clearPublicMenuCache = () => {
 };
 
 const resolveProductImage = (product: ApiProduct) => {
-  if (isUsableImageUrl(product.imagem ?? product.imagemUrl)) {
-    return (product.imagem ?? product.imagemUrl) as string;
+  const imageUrl = product.imageUrl ?? product.imagemUrl ?? product.imagem;
+
+  if (isUsableImageUrl(imageUrl)) {
+    return imageUrl as string;
   }
 
   return directProductPhotosById[String(product.id)] ??
@@ -224,8 +232,10 @@ const resolveProductImage = (product: ApiProduct) => {
 };
 
 const resolveComboImage = (combo: ApiCombo) => {
-  if (isUsableImageUrl(combo.imagem ?? combo.imagemUrl)) {
-    return (combo.imagem ?? combo.imagemUrl) as string;
+  const imageUrl = combo.imageUrl ?? combo.imagemUrl ?? combo.imagem;
+
+  if (isUsableImageUrl(imageUrl)) {
+    return imageUrl as string;
   }
 
   return directComboPhotosById[String(combo.id)] ??
@@ -375,7 +385,7 @@ const mapAdditional = (additional: ApiAdditional): MenuItem => ({
   name: additional.nomeAdicional ?? additional.nomedAicional ?? additional.nome ?? "Adicional",
   description: "Adicional do pedido",
   price: additional.preco,
-  image: "/assets/pits-logo.svg",
+  image: additional.imageUrl ?? additional.imagemUrl ?? additional.imagem ?? "/assets/pits-logo.svg",
   active: additional.ativo,
   inStock: additional.ativo
 });
