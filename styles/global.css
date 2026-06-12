@@ -3123,6 +3123,55 @@ img {
   padding-right: 2px;
 }
 
+.cart-flavor-modal {
+  width: min(430px, calc(100vw - 32px));
+  padding: 14px;
+}
+
+.cart-flavor-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 2px 4px;
+}
+
+.cart-flavor-list button {
+  min-height: 54px;
+  border: 1px solid rgba(255, 171, 45, 0.22);
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255, 171, 45, 0.12), rgba(255, 106, 0, 0.06)),
+    rgba(255, 255, 255, 0.055);
+  color: var(--white);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  line-height: 1.15;
+  padding: 10px 12px;
+  text-align: left;
+  transition: 160ms ease;
+}
+
+.cart-flavor-list button:hover {
+  border-color: rgba(255, 171, 45, 0.7);
+  background:
+    linear-gradient(180deg, rgba(255, 171, 45, 0.28), rgba(255, 106, 0, 0.14)),
+    rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.cart-flavor-list span {
+  display: block;
+}
+
+@media (max-width: 420px) {
+  .cart-flavor-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cart-extra-option-row {
   display: flex;
   align-items: center;

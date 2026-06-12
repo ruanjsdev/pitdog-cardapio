@@ -255,7 +255,21 @@ const getBeverageOptions = (name: string, description: string) => {
   const searchable = normalizeText(`${name} ${description}`);
 
   if (searchable.includes("suco")) {
-    const knownJuiceFlavors = ["Maracujá", "Acerola", "Abacaxi", "Cajá", "Cupuaçu", "Goiaba", "Graviola", "Manga", "Uva"];
+    const knownJuiceFlavors = [
+      "Maracujá",
+      "Acerola",
+      "Abacaxi",
+      "Cajá",
+      "Cupuaçu",
+      "Goiaba",
+      "Graviola",
+      "Manga",
+      "Uva",
+      "Laranja",
+      "Limão",
+      "Morango",
+      "Tamarindo",
+    ];
     const flavors = knownJuiceFlavors.filter((flavor) => searchable.includes(normalizeText(flavor)));
 
     return flavors.length > 0 ? flavors : undefined;
@@ -263,20 +277,28 @@ const getBeverageOptions = (name: string, description: string) => {
 
   if (!searchable.includes("refrigerante") && !searchable.includes("refri")) return undefined;
 
-  const knownSodaFlavors = [
-    "Coca-Cola",
-    "Coca-Cola Zero",
-    "Guaraná",
-    "Guaraná Zero",
-    "Fanta Laranja",
-    "Fanta Uva",
-    "Sprite",
-    "Pepsi",
-    "Soda",
-    "Kuat",
-    "Jesus"
+  const sodaOptions = [
+    { label: "Coca-Cola Zero", aliases: ["coca cola zero", "coca-cola zero", "coca zero"] },
+    { label: "Coca-Cola", aliases: ["coca cola", "coca-cola", "coca"], blockedBy: ["coca cola zero", "coca-cola zero", "coca zero"] },
+    { label: "Guaraná Zero", aliases: ["guarana zero", "guaraná zero"] },
+    { label: "Guaraná", aliases: ["guarana", "guaraná"], blockedBy: ["guarana zero", "guaraná zero"] },
+    { label: "Fanta Laranja", aliases: ["fanta laranja", "laranja"] },
+    { label: "Fanta Uva", aliases: ["fanta uva"] },
+    { label: "Sprite", aliases: ["sprite"] },
+    { label: "Pepsi", aliases: ["pepsi"] },
+    { label: "Soda", aliases: ["soda", "soda limonada"] },
+    { label: "Kuat", aliases: ["kuat"] },
+    { label: "Jesus", aliases: ["jesus"] },
+    { label: "Tuchaua", aliases: ["tuchaua", "tuchauá"] },
+    { label: "Baré", aliases: ["bare", "baré"] },
   ];
-  const flavors = knownSodaFlavors.filter((flavor) => searchable.includes(normalizeText(flavor)));
+  const flavors = sodaOptions
+    .filter((option) => {
+      const hasBlockedAlias = option.blockedBy?.some((alias) => searchable.includes(normalizeText(alias)));
+
+      return !hasBlockedAlias && option.aliases.some((alias) => searchable.includes(normalizeText(alias)));
+    })
+    .map((option) => option.label);
 
   return flavors.length > 0 ? flavors : undefined;
 };
