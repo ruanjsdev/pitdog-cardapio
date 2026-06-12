@@ -3062,12 +3062,20 @@ img {
 }
 
 .cart-extras-modal {
-  margin-top: 12px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 99999;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(520px, calc(100vh - 48px));
+  overflow: auto;
+  margin: 0;
   padding: 12px;
   border-radius: 18px;
   background: rgba(12, 9, 7, 0.96);
   border: 1px solid rgba(255, 106, 0, 0.22);
-  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.64);
+  transform: translate(-50%, -50%);
 }
 
 .cart-extras-modal-header {
