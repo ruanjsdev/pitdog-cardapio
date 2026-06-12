@@ -103,6 +103,18 @@ export const CartDrawer = ({
     onUpdateItemNotes(itemId, flavor);
   };
 
+  const getAvailableExtras = (item: MenuItem) => {
+    const linkedAddonIds = item.addonIds;
+
+    return Array.isArray(linkedAddonIds)
+      ? extraItems.filter((extra) => linkedAddonIds.includes(extra.id))
+      : extraItems;
+  };
+
+  const extrasModalItem = items.find((cartItem) => cartItem.item.id === openExtrasForItem);
+  const extrasModalOptions = extrasModalItem ? getAvailableExtras(extrasModalItem.item) : [];
+  const extrasModalSelected = extrasModalItem?.extras ?? [];
+
   const toggleQuickNote = (itemId: string, note: string, currentNotes = "") => {
     const parts = currentNotes
       .split(",")
@@ -154,12 +166,8 @@ export const CartDrawer = ({
           <div className="cart-items">
             {items.map((cartItem) => {
               const itemId = cartItem.item.id;
-              const extrasIsOpen = openExtrasForItem === itemId;
               const isExtraItem = cartItem.item.type === "ADDITIONAL" || cartItem.item.categoryId === "extras";
-              const linkedAddonIds = cartItem.item.addonIds;
-              const availableExtraItems = Array.isArray(linkedAddonIds)
-                ? extraItems.filter((extra) => linkedAddonIds.includes(extra.id))
-                : extraItems;
+              const availableExtraItems = getAvailableExtras(cartItem.item);
               const canUseExtras = cartItem.item.allowsAdditionals === true && availableExtraItems.length > 0;
               const extras = cartItem.extras ?? [];
               const flavorOptions = cartItem.item.options ?? [];
@@ -326,86 +334,6 @@ export const CartDrawer = ({
                       </label>
                     )}
 
-                    {!isExtraItem && canUseExtras && extrasIsOpen && (
-                      <div className="cart-extras-modal">
-                        <div className="cart-extras-modal-header">
-                          <div>
-                            <strong>Escolha os adicionais</strong>
-                            <span>Para: {cartItem.item.name}</span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setOpenExtrasForItem(null)}
-                            aria-label="Fechar adicionais"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-
-                        <div className="cart-extras-list">
-                          {availableExtraItems.map((extra) => {
-                            const selectedExtra = extras.find(
-                              (item) => item.item.id === extra.id
-                            );
-
-                            return (
-                              <div
-                                key={extra.id}
-                                className="cart-extra-option-row"
-                              >
-                                <div>
-                                  <span>{extra.name}</span>
-                                  <strong>
-                                    + {formatCurrency(extra.price)}
-                                  </strong>
-                                </div>
-
-                                <div className="cart-extra-option-actions">
-                                  {selectedExtra && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onDecreaseExtraFromItem(
-                                          itemId,
-                                          extra.id
-                                        )
-                                      }
-                                      aria-label="Diminuir adicional"
-                                    >
-                                      <Minus size={14} />
-                                    </button>
-                                  )}
-
-                                  <strong>{selectedExtra?.quantity ?? 0}</strong>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onAddExtraToItem(itemId, extra)
-                                    }
-                                    aria-label="Adicionar adicional"
-                                  >
-                                    <Plus size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <button
-                          type="button"
-                          className="cart-extras-confirm"
-                          onClick={() => {
-                            setOpenExtrasForItem(null);
-                            onConfirmExtras(cartItem.item.name);
-                          }}
-                        >
-                          Confirmar adicionais
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -475,6 +403,83 @@ export const CartDrawer = ({
           </div>
         </div>
       </aside>
+
+      {extrasModalItem && extrasModalOptions.length > 0 && (
+        <div className="cart-extras-screen" role="dialog" aria-modal="true" aria-label="Escolher adicionais">
+          <button
+            className="cart-extras-screen-backdrop"
+            type="button"
+            onClick={() => setOpenExtrasForItem(null)}
+            aria-label="Fechar adicionais"
+          />
+
+          <section className="cart-extras-modal">
+            <div className="cart-extras-modal-header">
+              <div>
+                <strong>Escolha os adicionais</strong>
+                <span>Para: {extrasModalItem.item.name}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOpenExtrasForItem(null)}
+                aria-label="Fechar adicionais"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="cart-extras-list">
+              {extrasModalOptions.map((extra) => {
+                const selectedExtra = extrasModalSelected.find(
+                  (item) => item.item.id === extra.id
+                );
+
+                return (
+                  <div key={extra.id} className="cart-extra-option-row">
+                    <div>
+                      <span>{extra.name}</span>
+                      <strong>+ {formatCurrency(extra.price)}</strong>
+                    </div>
+
+                    <div className="cart-extra-option-actions">
+                      <button
+                        type="button"
+                        onClick={() => onDecreaseExtraFromItem(extrasModalItem.item.id, extra.id)}
+                        disabled={!selectedExtra}
+                        aria-label="Diminuir adicional"
+                      >
+                        <Minus size={14} />
+                      </button>
+
+                      <strong>{selectedExtra?.quantity ?? 0}</strong>
+
+                      <button
+                        type="button"
+                        onClick={() => onAddExtraToItem(extrasModalItem.item.id, extra)}
+                        aria-label="Adicionar adicional"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              className="cart-extras-confirm"
+              onClick={() => {
+                setOpenExtrasForItem(null);
+                onConfirmExtras(extrasModalItem.item.name);
+              }}
+            >
+              Confirmar adicionais
+            </button>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
