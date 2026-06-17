@@ -1,4 +1,4 @@
-import { Bike, Flame, Utensils } from "lucide-react";
+import { Bike, Flame, Store } from "lucide-react";
 
 export const AboutSection = () => (
   <section className="about-strip" id="sobre">
@@ -16,8 +16,8 @@ export const AboutSection = () => (
         Delivery
       </span>
       <span>
-        <Utensils size={16} />
-        Retirada ou mesa
+        <Store size={16} />
+        Retirada no balcão
       </span>
     </div>
   </section>

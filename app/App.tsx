@@ -325,6 +325,13 @@ export const App = () => {
     [products]
   );
 
+  const heroFeaturedItems = useMemo(() => {
+    const activeItems = visibleProducts.filter((item) => item.active !== false && item.inStock !== false);
+    const featuredItems = activeItems.filter((item) => item.featured);
+
+    return (featuredItems.length ? featuredItems : activeItems).slice(0, 3);
+  }, [visibleProducts]);
+
   const showPopup = (title: string, message: string, tone: AddedPopup["tone"] = "success") => {
     setAddedPopup({
       tone,
@@ -388,6 +395,7 @@ export const App = () => {
 
       <main>
         <Hero
+          featuredItems={heroFeaturedItems}
           onOrderClick={() =>
             document.getElementById("cardapio")?.scrollIntoView({
               behavior: "smooth",

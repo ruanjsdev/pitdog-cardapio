@@ -31,6 +31,7 @@ type ApiProduct = {
   categoriaNome?: string;
   ativo?: boolean;
   destaque?: boolean;
+  vitrine?: boolean;
   highlight?: string;
   subtitulo?: string;
   ordem?: number;
@@ -361,7 +362,7 @@ const mapProduct = (product: ApiProduct): MenuItem => {
     promotionalPrice: product.precoPromocional,
     image: resolveProductImage(product),
     active: product.ativo,
-    featured: product.destaque || !!(product.highlight || product.subtitulo || decodedDescription.subtitle),
+    featured: Boolean(product.vitrine ?? product.destaque),
     inStock: product.estoqueDisponivel,
     order: product.ordem,
     allowsAdditionals: isBeverage(product) ? false : product.permiteAdicionais ?? product.allowsAdditionals ?? true,

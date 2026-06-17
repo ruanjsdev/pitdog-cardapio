@@ -4,8 +4,7 @@ import {
   MapPin,
   PackageCheck,
   Send,
-  Store,
-  Utensils
+  Store
 } from "lucide-react";
 
 import { FormEvent, useEffect, useState } from "react";
@@ -41,7 +40,6 @@ export const CheckoutSection = ({
   const [errorMessage, setErrorMessage] = useState("");
 
   const [addressOpen, setAddressOpen] = useState(false);
-  const isTableOrder = checkout.fulfillment === "table";
   const deliveryAddressPreview = [
     checkout.deliveryAddress.street,
     checkout.deliveryAddress.number,
@@ -65,14 +63,14 @@ export const CheckoutSection = ({
 
   useEffect(() => {
     if (checkout.fulfillment === "delivery" && !storeConfig.aceitaEntrega) {
-      updateField("fulfillment", storeConfig.aceitaRetirada ? "pickup" : "table");
+      updateField("fulfillment", "pickup");
     }
 
     if (checkout.fulfillment === "pickup" && !storeConfig.aceitaRetirada) {
-      updateField("fulfillment", storeConfig.aceitaEntrega ? "delivery" : "table");
+      updateField("fulfillment", "delivery");
     }
 
-    if (checkout.fulfillment === "table" && !storeConfig.aceitaMesa) {
+    if (checkout.fulfillment === "table") {
       updateField("fulfillment", storeConfig.aceitaEntrega ? "delivery" : "pickup");
     }
 
@@ -115,11 +113,7 @@ export const CheckoutSection = ({
       setErrorMessage("Preencha rua, numero e bairro para entrega.");
       return;
     }
-    if (isTableOrder && !checkout.tableNumber.trim()) {
-      setErrorMessage("Informe o numero da mesa.");
-      return;
-    }
-    if (!isTableOrder && !checkout.phone.replace(/\D/g, "")) {
+    if (!checkout.phone.replace(/\D/g, "")) {
       setErrorMessage("Informe um WhatsApp valido.");
       return;
     }
@@ -130,7 +124,7 @@ export const CheckoutSection = ({
     try {
       const createdOrder = await createOrderDraft(orderDraft);
 
-      if (!isTableOrder && checkout.paymentMethod === "pix" && !hasApiUrl) {
+      if (checkout.paymentMethod === "pix" && !hasApiUrl) {
         await createPixPaymentIntent(orderDraft);
       }
 
@@ -199,7 +193,7 @@ export const CheckoutSection = ({
         {/* INFO */}
         <div className="info-bubble">
           <span className="info-bubble-title">Como funciona?</span>
-          <p>Escolha uma das 3 formas disponíveis para receber seu pedido.</p>
+          <p>Escolha entrega ou retirada para receber seu pedido.</p>
         </div>
 
         {/* ENTREGA */}
@@ -223,16 +217,6 @@ export const CheckoutSection = ({
             <Store size={22} />
             <b>Retirada</b>
             <small>Buscar no balcão</small>
-          </button>}
-
-          {storeConfig.aceitaMesa && <button
-            type="button"
-            className={checkout.fulfillment === "table" ? "is-selected" : ""}
-            onClick={() => updateField("fulfillment", "table")}
-          >
-            <Utensils size={22} />
-            <b>Mesa</b>
-            <small>Consumir no local</small>
           </button>}
 
         </div>
@@ -354,30 +338,15 @@ export const CheckoutSection = ({
         )}
 
         {/* WHATSAPP */}
-        {!isTableOrder && (
-          <label>
-            WhatsApp
-            <input
-              value={checkout.phone}
-              onChange={(e) => updateField("phone", e.target.value)}
-              placeholder="(91) 99999-9999"
-              required
-            />
-          </label>
-        )}
-
-        {/* MESA */}
-        {checkout.fulfillment === "table" && (
-          <label>
-            Número da mesa
-            <input
-              value={checkout.tableNumber}
-              onChange={(e) => updateField("tableNumber", e.target.value)}
-              placeholder="Ex: mesa 04"
-              required
-            />
-          </label>
-        )}
+        <label>
+          WhatsApp
+          <input
+            value={checkout.phone}
+            onChange={(e) => updateField("phone", e.target.value)}
+            placeholder="(91) 99999-9999"
+            required
+          />
+        </label>
 
         {/* PAGAMENTO */}
         <div className="payment-section">
@@ -483,7 +452,7 @@ export const CheckoutSection = ({
           <span>
             {checkout.fulfillment === "delivery"
               ? "Taxa aplicada apenas para entrega."
-              : "Sem taxa para retirada ou mesa."}
+              : "Sem taxa para retirada."}
           </span>
         </div>
 

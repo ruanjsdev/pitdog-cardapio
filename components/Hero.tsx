@@ -1,11 +1,14 @@
-import { ArrowRight, Clock, MapPin, MessageCircle, Star } from "lucide-react";
+import { ArrowRight, MapPin, Star } from "lucide-react";
 import { businessInfo } from "../data/business";
+import { MenuItem } from "../types/menu";
+import { formatCurrency } from "../utils/currency";
 
 interface HeroProps {
+  featuredItems: MenuItem[];
   onOrderClick: () => void;
 }
 
-export const Hero = ({ onOrderClick }: HeroProps) => (
+export const Hero = ({ featuredItems, onOrderClick }: HeroProps) => (
   <section className="hero" id="top">
     <div className="brand-board">
       <div className="brand-logo-card">
@@ -46,30 +49,16 @@ export const Hero = ({ onOrderClick }: HeroProps) => (
         <span>Mais pedidos</span>
         <strong>Cardápio Pits</strong>
       </div>
-      <article>
-        <img src="/Cachorro quente/Sem título1.jpeg" alt="" decoding="async" />
-        <div>
-          <strong>Pits Dog</strong>
-          <span>Cachorro quente chodó</span>
-        </div>
-        <b>R$16</b>
-      </article>
-      <article>
-        <img src="/Hambuerguer/Sem título5.jpeg" alt="" loading="lazy" decoding="async" />
-        <div>
-          <strong>Pits Burguer</strong>
-          <span>Burger premium da casa</span>
-        </div>
-        <b>R$27</b>
-      </article>
-      <article>
-        <img src="/Combos/ComboFamilia.jpeg" alt="" loading="lazy" decoding="async" />
-        <div>
-          <strong>Combo Família</strong>
-          <span>Pedido completo para dividir</span>
-        </div>
-        <b>R$90</b>
-      </article>
+      {featuredItems.map((item, index) => (
+        <article key={`${item.type ?? "item"}-${item.id}`}>
+          <img src={item.image} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" />
+          <div>
+            <strong>{item.name}</strong>
+            <span>{item.tag || item.description || "Destaque da casa"}</span>
+          </div>
+          <b>{formatCurrency(item.price)}</b>
+        </article>
+      ))}
     </div>
   </section>
 );

@@ -13,7 +13,7 @@ export const fallbackStoreConfig: StoreConfig = {
   pedidoMinimo: 0,
   aceitaRetirada: true,
   aceitaEntrega: true,
-  aceitaMesa: true,
+  aceitaMesa: false,
   aceitaDinheiro: true,
   aceitaPix: true,
   aceitaCartao: true,
@@ -121,12 +121,7 @@ export const getStoreConfig = async (): Promise<StoreConfig> => {
             : isClosedForPickup(status)
             ? false
             : fallbackStoreConfig.aceitaRetirada,
-        aceitaMesa:
-          typeof apiStatus.aceitaMesa === "boolean"
-            ? apiStatus.aceitaMesa
-            : isClosedTotal(status)
-            ? false
-            : fallbackStoreConfig.aceitaMesa,
+        aceitaMesa: false,
         mensagemLojaFechada:
           typeof apiStatus.mensagem === "string"
             ? apiStatus.mensagem
