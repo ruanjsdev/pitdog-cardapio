@@ -1,15 +1,19 @@
 import { createReadStream, existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
+const dataDir = process.env.DATA_DIR ?? join(rootDir, "data");
+const showcaseFilePath = join(dataDir, "showcase.json");
 const distDir = join(rootDir, "dist");
 const backendUrl = (process.env.BACKEND_API_URL ?? "https://pitsdog-api-production.up.railway.app").replace(/\/$/, "");
 const whatsappBotUrl = (process.env.WHATSAPP_BOT_URL ?? process.env.VITE_WHATSAPP_BOT_URL ?? "https://pits-dog-bot.onrender.com").replace(/\/$/, "");
 const whatsappBotPin = process.env.WHATSAPP_ADMIN_PIN ?? process.env.VITE_WHATSAPP_ADMIN_PIN ?? "";
 const port = Number(process.env.PORT ?? 3000);
 const menuCacheTtlMs = 60 * 1000;
+const showcaseLimit = 3;
 let menuCache = {
   expiresAt: 0,
   productsById: new Map(),
@@ -35,6 +39,15 @@ function sendText(response, statusCode, message) {
   response.end(message);
 }
 
+function sendJson(response, statusCode, payload) {
+  response.writeHead(statusCode, {
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json; charset=utf-8",
+  });
+  response.end(JSON.stringify(payload));
+}
+
 function serveFile(response, filePath) {
   if (!existsSync(filePath)) {
     sendText(response, 404, "Not Found\n");
@@ -56,6 +69,61 @@ async function readRequestBody(request) {
   }
 
   return Buffer.concat(chunks);
+}
+
+function normalizeShowcaseProductIds(value) {
+  const productIds = Array.isArray(value?.productIds) ? value.productIds : [];
+  const uniqueIds = [];
+
+  productIds.forEach((productId) => {
+    const normalizedId = String(productId ?? "").trim();
+
+    if (normalizedId && !uniqueIds.includes(normalizedId)) {
+      uniqueIds.push(normalizedId);
+    }
+  });
+
+  return uniqueIds.slice(0, showcaseLimit);
+}
+
+async function readShowcase() {
+  try {
+    return {
+      productIds: normalizeShowcaseProductIds(JSON.parse(await readFile(showcaseFilePath, "utf8"))),
+    };
+  } catch {
+    return { productIds: [] };
+  }
+}
+
+async function saveShowcase(payload) {
+  const showcase = { productIds: normalizeShowcaseProductIds(payload) };
+
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(showcaseFilePath, `${JSON.stringify(showcase, null, 2)}\n`, "utf8");
+
+  return showcase;
+}
+
+async function handleShowcase(request, response) {
+  if (request.method === "GET" || request.method === "HEAD") {
+    sendJson(response, 200, await readShowcase());
+    return;
+  }
+
+  if (request.method !== "POST" && request.method !== "PUT") {
+    sendJson(response, 405, { message: "Metodo nao permitido." });
+    return;
+  }
+
+  try {
+    const body = await readRequestBody(request);
+    const payload = JSON.parse(body.toString("utf8") || "{}");
+
+    sendJson(response, 200, await saveShowcase(payload));
+  } catch {
+    sendJson(response, 400, { message: "Vitrine invalida." });
+  }
 }
 
 function asArray(payload) {
@@ -251,6 +319,11 @@ createServer((request, response) => {
       "Access-Control-Allow-Origin": "*",
     });
     response.end();
+    return;
+  }
+
+  if (request.url.split("?")[0] === "/api/showcase") {
+    void handleShowcase(request, response);
     return;
   }
 

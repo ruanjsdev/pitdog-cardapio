@@ -23,6 +23,7 @@ export interface MenuItem {
   image: string;
   active?: boolean;
   featured?: boolean;
+  featuredRank?: number;
   inStock?: boolean;
   order?: number;
   allowsAdditionals?: boolean;

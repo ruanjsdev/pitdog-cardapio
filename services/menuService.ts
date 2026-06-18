@@ -71,6 +71,11 @@ type PublicMenu = {
 };
 
 const publicMenuCacheKey = "pitsdog:public-menu:v1";
+const officialShowcaseApiUrl = "https://pitsdog-cardapio-oficial.onrender.com/api";
+const showcaseApiUrl = (
+  import.meta.env.VITE_SHOWCASE_API_URL ||
+  (import.meta.env.VITE_API_URL?.startsWith("/") ? import.meta.env.VITE_API_URL : officialShowcaseApiUrl)
+).replace(/\/$/, "");
 let pendingPublicMenuRequest: Promise<PublicMenu> | null = null;
 
 type PublicMenuCache = {
@@ -110,6 +115,49 @@ const publicApiRequest = async <T>(path: string): Promise<T> => {
 
     throw error;
   }
+};
+
+const loadShowcaseProductIds = async () => {
+  try {
+    const response = await fetch(`${showcaseApiUrl}/showcase`, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json"
+      }
+    });
+    const payload = await response.json().catch(() => null);
+    const productIds = Array.isArray(payload?.productIds) ? payload.productIds : [];
+    const uniqueIds: string[] = [];
+
+    productIds.forEach((productId: number | string) => {
+      const normalizedId = String(productId ?? "").trim();
+
+      if (normalizedId && !uniqueIds.includes(normalizedId)) {
+        uniqueIds.push(normalizedId);
+      }
+    });
+
+    return uniqueIds.slice(0, 3);
+  } catch (error) {
+    console.warn("Nao foi possivel carregar a vitrine do site.", error);
+    return [];
+  }
+};
+
+const applyShowcaseSelection = (items: MenuItem[], showcaseProductIds: string[]) => {
+  if (showcaseProductIds.length === 0) return items;
+
+  const showcaseRankById = new Map(showcaseProductIds.map((productId, index) => [productId, index]));
+
+  return items.map((item) => {
+    const featuredRank = item.type === "PRODUCT" ? showcaseRankById.get(item.id) : undefined;
+
+    return {
+      ...item,
+      featured: featuredRank !== undefined,
+      featuredRank
+    };
+  });
 };
 
 const mapCategory = (category: ApiCategory): MenuCategory => ({
@@ -519,9 +567,11 @@ const loadPublicMenuFromApi = async (): Promise<PublicMenu> => {
     return { categories: [], products: [] };
   }
 
+  const showcaseProductIds = await loadShowcaseProductIds();
+  const menuProducts = filterItemsByActiveCategories([...products, ...combos, ...additionalProducts], categories);
   const menu = {
     categories: categories,
-    products: filterItemsByActiveCategories([...products, ...combos, ...additionalProducts], categories)
+    products: applyShowcaseSelection(menuProducts, showcaseProductIds)
   };
 
   writePublicMenuCache(menu);

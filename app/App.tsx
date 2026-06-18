@@ -327,7 +327,9 @@ export const App = () => {
 
   const heroFeaturedItems = useMemo(() => {
     const activeItems = visibleProducts.filter((item) => item.active !== false && item.inStock !== false);
-    const featuredItems = activeItems.filter((item) => item.featured);
+    const featuredItems = activeItems
+      .filter((item) => item.featured)
+      .sort((firstItem, secondItem) => (firstItem.featuredRank ?? 99) - (secondItem.featuredRank ?? 99));
 
     return (featuredItems.length ? featuredItems : activeItems).slice(0, 3);
   }, [visibleProducts]);
